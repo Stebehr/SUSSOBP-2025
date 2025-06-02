@@ -494,6 +494,9 @@
         }
     </style>
     <script>
+        // Google Apps Script Web App URL
+        const APPS_SCRIPT_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwEKqvcuKGzYjmgX9rxwlAmVLIqg64fs6W9jI2z5HV8F7_Yri-Sc9o8MYMSV4oJxqF3/exec";
+
         // Global variables
         let numGroups = 3;
         let teamsPerGroup = 5;
@@ -769,8 +772,8 @@
                 generateThirdPlaceAndFinalMatches();
                 updateFinalRoundAdvancements(); // To ensure all TBA matches are rendered correctly
 
-                // *** NEU: Daten im LocalStorage speichern nach dem Generieren ***
-                saveTournamentData();
+                // *** NEU: Daten in Google Sheets speichern nach dem Generieren ***
+                saveTournamentDataToSheet();
 
                 showScreen('tournament-screen');
             } catch (error) {
@@ -835,7 +838,7 @@
             prevSchedule.sort((a,b) => {
                 const timeA = new Date(`2000-01-01T${a.time}:00`).getTime();
                 const timeB = new Date(`2000-01-01T${b.time}:00`).getTime();
-                if (timeA !== timeB) return timeA - timeB;
+                if (timeA !== timeB) return timeA - b.time; // Changed from timeB.getTime() to b.time
                 return a.table - b.table;
             }).forEach(game => {
                 const gameDateTime = new Date(`2000-01-01T${game.time}:00`);
@@ -1361,8 +1364,8 @@
             checkAndGenerateOverallStandingsAutomatically();
             checkAndTriggerNextRoundsAutomatically();
 
-            // *** NEU: Daten nach jeder Ergebnisaufnahme speichern ***
-            saveTournamentData();
+            // *** NEU: Daten in Google Sheets speichern nach jeder Ergebnisaufnahme ***
+            saveTournamentDataToSheet();
         }
 
         // New function to check and trigger subsequent rounds based on dependencies
@@ -2100,7 +2103,7 @@
                     newTBA_ssfMatches.push({ id: id, team1: 'TBA', team2: 'TBA', isFinalRound: true, isSmallSemiFinal: true, type: id });
                 }
             });
-
+            
             if (newTBA_ssfMatches.length > 0) {
                 const combinedScheduledGames = calculateGameSchedule(newTBA_ssfMatches, matchDuration, breakDuration, currentSmallSemiFinalStartTime, numTables, smallSemiFinalsSchedule);
                 smallSemiFinalsSchedule = combinedScheduledGames.filter(s => s.match.isSmallSemiFinal);
@@ -2196,7 +2199,7 @@
                 const lastQuarterFinalGame = quarterFinalsSchedule.slice(-1)[0];
                 currentPlacementStartTime = getNextAvailableTime(lastQuarterFinalsSchedule.time);
             } else {
-                currentPlacementStartTime = quarterFinalsStartTime;
+                currentPlacementStartTime = startTime;
             }
             
             let allScheduledGamesForP7P5 = [
@@ -2276,7 +2279,7 @@
                 const matchId = scheduleEntry.match.id;
                 const team1 = scheduleEntry.match.team1;
                 const team2 = scheduleEntry.match.team2;
-                const matchType = scheduleEntry.match.type; // <-- Korrigiert: war vorher addGlobalMatchId
+                const matchType = scheduleEntry.match.type;
 
                 let existingMatchData = finalRoundMatchResults['global'].find(m => m.id === matchId);
                 const matchInputDiv = createMatchInput('FinalRound', team1, team2, false, true, false, false, false, true, existingMatchData, scheduleEntry.time, scheduleEntry.table, matchId, matchType);
@@ -2622,7 +2625,7 @@
                 const matchId = scheduleEntry.match.id;
                 const team1 = scheduleEntry.match.team1;
                 const team2 = scheduleEntry.match.team2;
-                const matchType = scheduleEntry.match.type; // Richtig
+                const matchType = scheduleEntry.match.type;
 
                 let existingMatchData = finalRoundMatchResults['global'].find(m => m.id === matchId);
                 const matchInputDiv = createMatchInput('FinalRound', team1, team2, false, true, false, false, false, false, existingMatchData, scheduleEntry.time, scheduleEntry.table, matchId, matchType);
@@ -2680,13 +2683,12 @@
                     const team1 = matchDiv.querySelector('.team-name:first-of-type')?.textContent;
                     const team2 = matchDiv.querySelector('.team-name:last-of-type')?.textContent;
                     const matchId = matchDiv.getAttribute('data-match-id');
-                    const matchType = matchDiv.getAttribute('data-match-type'); // <-- Dies kann null sein!
+                    const matchType = matchDiv.getAttribute('data-match-type');
 
                     // Determine if inputs/button should be disabled based on TBA teams or previous round's completion
                     let disableInputsAndButton = (team1 === 'TBA' || team2 === 'TBA');
 
-                    // Hinzufügen einer Prüfung, ob matchType überhaupt einen Wert hat
-                    if (matchType) { // <-- NEUE PRÜFUNG HIER
+                    if (matchType) { // Hinzugefügte Prüfung für matchType, um TypeError zu vermeiden
                         if (matchType.startsWith('VF') && !allPlacementGamesRecorded) {
                             disableInputsAndButton = true;
                         } else if (matchType.startsWith('KHF') && !allQuarterFinalsRecorded) {
@@ -2845,8 +2847,8 @@
             updateFinalRankingsTable();
         }
 
-        // NEU: Funktion zum Speichern der Turnierdaten im LocalStorage
-        function saveTournamentData() {
+        // NEU: Funktion zum Speichern der Turnierdaten in Google Sheets
+        async function saveTournamentDataToSheet() {
             const tournamentData = {
                 numGroups: numGroups,
                 teamsPerGroup: teamsPerGroup,
@@ -2875,10 +2877,29 @@
                 smallSemiFinalsStartTime: smallSemiFinalsStartTime,
                 semiFinalsStartTime: semiFinalsStartTime
             };
-            // Beachte: Date-Objekte in `lastPlayedTime` werden als Strings gespeichert
-            // (Standardverhalten von JSON.stringify). Beim Laden müssen sie zurückkonvertiert werden.
-            localStorage.setItem('tournamentData', JSON.stringify(tournamentData));
-            console.log("Turnierdaten im LocalStorage gespeichert.");
+
+            try {
+                const response = await fetch(APPS_SCRIPT_WEB_APP_URL, {
+                    method: 'POST',
+                    mode: 'cors', // Wichtig für CORS-Header
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ action: 'save', tournamentData: tournamentData }), // 'action' ist optional, kann nützlich sein, wenn Sie mehr Endpunkte haben
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    console.log("Turnierdaten erfolgreich in Google Sheets gespeichert.");
+                } else {
+                    console.error("Fehler beim Speichern der Turnierdaten in Google Sheets:", result.error || result);
+                    alert("Fehler beim Speichern der Daten in Google Sheets. Details in der Konsole.");
+                }
+            } catch (error) {
+                console.error("Netzwerkfehler beim Speichern in Google Sheets:", error);
+                alert("Netzwerkfehler beim Speichern in Google Sheets. Prüfen Sie Ihre Internetverbindung und die Apps Script URL.");
+            }
         }
 
 
