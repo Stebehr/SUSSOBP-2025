@@ -504,15 +504,15 @@
 
         let groups = {};
         const teamStats = {};
-        const teamLogos = {};
+        const teamLogos = {}; // Object to store Base64 encoded logos
         const groupMatchResults = {};
-        const finalRoundMatchResults = {'global': []};
+        const finalRoundMatchResults = {'global': []}; // Use a global key for final round matches
         let preliminaryRoundSchedule = [];
         let placementRoundSchedule = [];
         let quarterFinalsSchedule = [];
-        let smallSemiFinalsSchedule = [];
-        let seventhPlaceMatchSchedule = [];
-        let fifthPlaceMatchSchedule = [];
+        let smallSemiFinalsSchedule = []; // Added for 5-8th place matches
+        let seventhPlaceMatchSchedule = []; // Added for 7th place match
+        let fifthPlaceMatchSchedule = []; // Added for 5th place match
         let semiFinalsSchedule = [];
         let thirdPlaceMatchSchedule = [];
         let finalMatchSchedule = [];
@@ -521,7 +521,7 @@
         let quarterFinalsStartTime = null;
         let smallSemiFinalsStartTime = null;
         let semiFinalsStartTime = null;
-        const finalRankings = {};
+        const finalRankings = {}; // Stores the final rankings (1st, 2nd, 3rd place, etc.)
 
         // Function to switch visible screens
         function showScreen(screenId) {
@@ -544,13 +544,14 @@
 
         // Initialize or reset all tournament data
         function initializeTournamentData() {
+            // Clear existing data (but keep the objects for reference)
             for (const teamName in teamStats) {
                 delete teamStats[teamName];
             }
             for (const groupKey in groupMatchResults) {
                 delete groupMatchResults[groupKey];
             }
-            finalRoundMatchResults['global'] = [];
+            finalRoundMatchResults['global'] = []; // Reset global final round results
             preliminaryRoundSchedule = [];
             placementRoundSchedule = [];
             quarterFinalsSchedule = [];
@@ -561,6 +562,7 @@
             thirdPlaceMatchSchedule = [];
             finalMatchSchedule = [];
 
+            // Clear final rankings
             for (const key in finalRankings) {
                 if (finalRankings.hasOwnProperty(key)) {
                     delete finalRankings[key];
@@ -573,10 +575,11 @@
                 if (!groups[groupKey]) {
                     groups[groupKey] = { name: `Gruppe ${groupKey}`, teams: [] };
                 }
-                groups[groupKey].lastPlayedTime = null; // NEU: Initialisiere lastPlayedTime für jede Gruppe
+                groups[groupKey].lastPlayedTime = null; // Initialize lastPlayedTime for each group
             });
 
 
+            // Initialize teamStats for all teams in all groups
             for (const groupKey in groups) {
                 groups[groupKey].teams.forEach(team => {
                     teamStats[team] = {
@@ -588,14 +591,14 @@
                         gegentore: 0,
                         tordifferenz: 0,
                         punkte: 0,
-                        group: groupKey,
-                        lastPlayedTime: null,
-                        lastPlayedTable: null
+                        group: groupKey, // Associate team with its group
+                        lastPlayedTime: null, // Track when the team last played
+                        lastPlayedTable: null // Track which table the team last played on
                     };
                 });
-                groupMatchResults[groupKey] = [];
+                groupMatchResults[groupKey] = []; // Initialize match results array for each group
             }
-            groupStageEndTime = null;
+            groupStageEndTime = null; // Reset end times
             placementRoundStartTime = null;
             quarterFinalsStartTime = null;
             smallSemiFinalsStartTime = null;
@@ -684,6 +687,7 @@
             try {
                 const groupLetters = ['A', 'B', 'C'];
 
+                // Clear existing teamLogos before populating new ones
                 for (const key in teamLogos) {
                     if (teamLogos.hasOwnProperty(key)) {
                         delete teamLogos[key];
@@ -701,7 +705,7 @@
                     }
 
                     groups[groupKey].name = customGroupName;
-                    groups[groupKey].teams = [];
+                    groups[groupKey].teams = []; // Clear teams for the current group
 
                     for (let j = 0; j < teamsPerGroup; j++) {
                         const teamId = `team-${groupKey}-${j + 1}`;
@@ -719,28 +723,30 @@
                             logoPromises.push(new Promise((resolve) => {
                                 const reader = new FileReader();
                                 reader.onload = (e) => {
-                                    teamLogos[teamName] = e.target.result;
+                                    teamLogos[teamName] = e.target.result; // Store Base64 string
                                     resolve();
                                 };
                                 reader.readAsDataURL(file);
                             }));
                         } else {
-                            teamLogos[teamName] = null;
+                            teamLogos[teamName] = null; // Store null if no logo
                         }
                     }
                 }
 
-                await Promise.all(logoPromises);
+                await Promise.all(logoPromises); // Wait for all logo reads to complete
 
-                initializeTournamentData();
+                initializeTournamentData(); // Re-initialize stats for new teams/groups
                 generatePreliminaryRoundSchedule();
                 renderPreliminaryRoundSchedule();
                 renderGroupTables();
                 updateAllTables();
                 updateTournamentDetailsSummary();
 
+                // Hide cross-game section by default, show final round section
                 document.getElementById('cross-games-section').style.display = 'none';
-                document.getElementById('final-round-section').style.display = 'block'; // Make final round section visible from the start
+                document.getElementById('final-round-section').style.display = 'block';
+                // Clear all final round containers
                 document.getElementById('quarter-finals-container').innerHTML = '';
                 document.getElementById('small-semi-finals-container').innerHTML = '';
                 document.getElementById('seventh-place-container').innerHTML = '';
@@ -749,19 +755,22 @@
                 document.getElementById('third-place-container').innerHTML = '';
                 document.getElementById('final-container').innerHTML = '';
 
-                document.getElementById('placement-round-section').style.display = 'block'; // Make placement round section visible from the start
+                document.getElementById('placement-round-section').style.display = 'block';
                 document.getElementById('placement-matches-container').innerHTML = '';
 
                 renderOverallStandingsTable();
                 renderFinalRankingsTable();
 
                 // Initialize final round matches as TBA but visible, so they can be filled in later
-                generateQuarterFinalMatches(); // This will put TBAs if prelim is not done
-                generateSmallSemiFinalMatches(); // This will put TBAs if QFs are not done
-                generateSeventhAndFifthPlaceMatches(); // This will put TBAs if small semis are not done
-                generateSemiFinalMatches(); // This will put TBAs if QFs are not done
-                generateThirdPlaceAndFinalMatches(); // This will put TBAs if semis are not done
+                generateQuarterFinalMatches();
+                generateSmallSemiFinalMatches();
+                generateSeventhAndFifthPlaceMatches();
+                generateSemiFinalMatches();
+                generateThirdPlaceAndFinalMatches();
                 updateFinalRoundAdvancements(); // To ensure all TBA matches are rendered correctly
+
+                // *** NEU: Daten im LocalStorage speichern nach dem Generieren ***
+                saveTournamentData();
 
                 showScreen('tournament-screen');
             } catch (error) {
@@ -1350,7 +1359,10 @@
             calculateAllStats();
             updateAllTables();
             checkAndGenerateOverallStandingsAutomatically();
-            checkAndTriggerNextRoundsAutomatically(); // New function to check all subsequent rounds
+            checkAndTriggerNextRoundsAutomatically();
+
+            // *** NEU: Daten nach jeder Ergebnisaufnahme speichern ***
+            saveTournamentData();
         }
 
         // New function to check and trigger subsequent rounds based on dependencies
@@ -2264,7 +2276,7 @@
                 const matchId = scheduleEntry.match.id;
                 const team1 = scheduleEntry.match.team1;
                 const team2 = scheduleEntry.match.team2;
-                const matchType = scheduleEntry.match.type;
+                const matchType = scheduleEntry.addGlobalMatchId;
 
                 let existingMatchData = finalRoundMatchResults['global'].find(m => m.id === matchId);
                 const matchInputDiv = createMatchInput('FinalRound', team1, team2, false, true, false, false, false, true, existingMatchData, scheduleEntry.time, scheduleEntry.table, matchId, matchType);
@@ -2825,6 +2837,43 @@
             }
             updateFinalRankingsTable();
         }
+
+        // NEU: Funktion zum Speichern der Turnierdaten im LocalStorage
+        function saveTournamentData() {
+            const tournamentData = {
+                numGroups: numGroups,
+                teamsPerGroup: teamsPerGroup,
+                startTime: startTime,
+                matchDuration: matchDuration,
+                breakDuration: breakDuration,
+                numTables: numTables,
+                groups: groups,
+                teamStats: teamStats,
+                teamLogos: teamLogos, // Dies speichert die Base64-Strings der Logos
+                groupMatchResults: groupMatchResults,
+                finalRoundMatchResults: finalRoundMatchResults,
+                preliminaryRoundSchedule: preliminaryRoundSchedule,
+                placementRoundSchedule: placementRoundSchedule,
+                quarterFinalsSchedule: quarterFinalsSchedule,
+                smallSemiFinalsSchedule: smallSemiFinalsSchedule,
+                seventhPlaceMatchSchedule: seventhPlaceMatchSchedule,
+                fifthPlaceMatchSchedule: fifthPlaceMatchSchedule,
+                semiFinalsSchedule: semiFinalsSchedule,
+                thirdPlaceMatchSchedule: thirdPlaceMatchSchedule,
+                finalMatchSchedule: finalMatchSchedule,
+                finalRankings: finalRankings,
+                groupStageEndTime: groupStageEndTime,
+                placementRoundStartTime: placementRoundStartTime,
+                quarterFinalsStartTime: quarterFinalsStartTime,
+                smallSemiFinalsStartTime: smallSemiFinalsStartTime,
+                semiFinalsStartTime: semiFinalsStartTime
+            };
+            // Beachte: Date-Objekte in `lastPlayedTime` werden als Strings gespeichert
+            // (Standardverhalten von JSON.stringify). Beim Laden müssen sie zurückkonvertiert werden.
+            localStorage.setItem('tournamentData', JSON.stringify(tournamentData));
+            console.log("Turnierdaten im LocalStorage gespeichert.");
+        }
+
 
         // Initialize the screen when the DOM is fully loaded.
         document.addEventListener('DOMContentLoaded', () => {
