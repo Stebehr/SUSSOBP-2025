@@ -355,6 +355,7 @@
     </style>
     <script>
         // Global variables (will be populated from localStorage)
+        // GEÄNDERT: Alle Variablen, die neu zugewiesen werden, sind nun 'let'
         let numGroups = 3;
         let teamsPerGroup = 5;
         let startTime = '09:00';
@@ -363,10 +364,10 @@
         let numTables = 1;
 
         let groups = {};
-        const teamStats = {};
-        const teamLogos = {};
-        const groupMatchResults = {};
-        const finalRoundMatchResults = {'global': []};
+        let teamStats = {};
+        let teamLogos = {}; // Object to store Base64 encoded logos
+        let groupMatchResults = {};
+        let finalRoundMatchResults = {'global': []};
         let preliminaryRoundSchedule = [];
         let placementRoundSchedule = [];
         let quarterFinalsSchedule = [];
@@ -381,7 +382,7 @@
         let quarterFinalsStartTime = null;
         let smallSemiFinalsStartTime = null;
         let semiFinalsStartTime = null;
-        const finalRankings = {};
+        let finalRankings = {}; // Stores the final rankings (1st, 2nd, 3rd place, etc.)
 
         // Function to switch visible screens (on viewer, always show tournament-screen)
         function showScreen(screenId) {
@@ -870,8 +871,8 @@
                 
                 // Wiederherstellen der komplexen Objekte (Deep Copy für Objekt-Referenzen)
                 // Achtung: Für tief verschachtelte Objekte in teamStats/groups/matchResults
-                // wäre eine tiefere Klonung notwendig, aber für die aktuelle Struktur reicht Object.assign/direktes Zuweisen.
-                groups = data.groups; // groups might contain Date objects as strings if not handled correctly on save
+                // wäre eine tiefere Klonung notwendig, aber für die aktuelle Struktur reicht direktes Zuweisen.
+                groups = data.groups;
                 teamStats = data.teamStats;
                 teamLogos = data.teamLogos;
                 groupMatchResults = data.groupMatchResults;
@@ -880,14 +881,14 @@
                 // Wiederherstellen der Zeitstempel als Date-Objekte
                 if (teamStats) {
                     for (const teamName in teamStats) {
-                        if (teamStats[teamName].lastPlayedTime) {
+                        if (teamStats[teamName] && teamStats[teamName].lastPlayedTime) { // Added null check for teamStats[teamName]
                             teamStats[teamName].lastPlayedTime = new Date(teamStats[teamName].lastPlayedTime);
                         }
                     }
                 }
                 if (groups) {
                     for (const groupKey in groups) {
-                        if (groups[groupKey].lastPlayedTime) {
+                        if (groups[groupKey] && groups[groupKey].lastPlayedTime) { // Added null check for groups[groupKey]
                             groups[groupKey].lastPlayedTime = new Date(groups[groupKey].lastPlayedTime);
                         }
                     }
