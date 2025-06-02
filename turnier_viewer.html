@@ -354,7 +354,10 @@
         }
     </style>
     <script>
-        // Global variables (will be populated from localStorage)
+        // Google Apps Script Web App URL
+        const APPS_SCRIPT_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwEKqvcuKGzYjmgX9rxwlAmVLIqg64fs6W9jI2z5HV8F7_Yri-Sc9o8MYMSV4oJxqF3/exec";
+
+        // Global variables (will be populated from Google Sheets)
         // GEÄNDERT: Alle Variablen, die neu zugewiesen werden, sind nun 'let'
         let numGroups = 3;
         let teamsPerGroup = 5;
@@ -382,7 +385,7 @@
         let quarterFinalsStartTime = null;
         let smallSemiFinalsStartTime = null;
         let semiFinalsStartTime = null;
-        let finalRankings = {}; // Stores the final rankings (1st, 2nd, 3rd place, etc.)
+        let finalRankings = {};
 
         // Function to switch visible screens (on viewer, always show tournament-screen)
         function showScreen(screenId) {
@@ -392,22 +395,6 @@
         // Function to handle printing (optional for viewer, but kept for consistency)
         function printTournamentPlan() {
             window.print();
-        }
-
-        // No need for initializeTournamentData or configureTeams etc. on viewer side,
-        // as data is loaded. Keep utility functions that do not modify data.
-
-        function updateTournamentDetailsSummary() {
-            const summaryDiv = document.getElementById('tournament-details-summary');
-            summaryDiv.innerHTML = `
-                <h3>Turnierdetails:</h3>
-                <p><strong>Startzeit:</strong> ${startTime}</p>
-                <p><strong>Spiellänge:</strong> ${matchDuration} Minuten</p>
-                <p><strong>Pausenzeit:</strong> ${breakDuration} Minuten</p>
-                <p><strong>Anzahl Spieltische:</strong> ${numTables}</p>
-                <p><strong>Gruppen:</strong> ${numGroups}</p>
-                <p><strong>Teams pro Gruppe:</strong> ${teamsPerGroup}</p>
-            `;
         }
 
         // --- Simplified createMatchInput for Viewer ---
@@ -791,7 +778,7 @@
         }
         
         // This function would usually calculate all stats, but in the viewer it just needs to be called
-        // to ensure tables are updated with potentially new data from localStorage.
+        // to ensure tables are updated with potentially new data from Google Sheets.
         function calculateAllStats() {
              // In the viewer, we assume stats are pre-calculated by the admin page and loaded.
              // No need to re-calculate them here unless a more complex sync is implemented.
@@ -856,80 +843,98 @@
             updateFinalRankingsTable();
         }
 
-        // Main loading logic for the viewer
-        document.addEventListener('DOMContentLoaded', () => {
-            const savedData = localStorage.getItem('tournamentData');
-            if (savedData) {
-                const data = JSON.parse(savedData);
-                // Wiederherstellen der globalen Variablen
-                numGroups = data.numGroups;
-                teamsPerGroup = data.teamsPerGroup;
-                startTime = data.startTime;
-                matchDuration = data.matchDuration;
-                breakDuration = data.breakDuration;
-                numTables = data.numTables;
-                
-                // Wiederherstellen der komplexen Objekte (Deep Copy für Objekt-Referenzen)
-                // Achtung: Für tief verschachtelte Objekte in teamStats/groups/matchResults
-                // wäre eine tiefere Klonung notwendig, aber für die aktuelle Struktur reicht direktes Zuweisen.
-                groups = data.groups;
-                teamStats = data.teamStats;
-                teamLogos = data.teamLogos;
-                groupMatchResults = data.groupMatchResults;
-                finalRoundMatchResults = data.finalRoundMatchResults;
-                
-                // Wiederherstellen der Zeitstempel als Date-Objekte
-                if (teamStats) {
-                    for (const teamName in teamStats) {
-                        if (teamStats[teamName] && teamStats[teamName].lastPlayedTime) { // Added null check for teamStats[teamName]
-                            teamStats[teamName].lastPlayedTime = new Date(teamStats[teamName].lastPlayedTime);
+        // NEU: Funktion zum Laden der Turnierdaten aus Google Sheets
+        async function loadTournamentDataFromSheet() {
+            try {
+                const response = await fetch(APPS_SCRIPT_WEB_APP_URL, {
+                    method: 'GET', // Standard-Methode für doGet()
+                    mode: 'cors',
+                });
+
+                const result = await response.json();
+
+                if (result.success && result.data) {
+                    const data = result.data;
+
+                    // Wiederherstellen der globalen Variablen aus Google Sheets-Daten
+                    numGroups = data.numGroups;
+                    teamsPerGroup = data.teamsPerGroup;
+                    startTime = data.startTime;
+                    matchDuration = data.matchDuration;
+                    breakDuration = data.breakDuration;
+                    numTables = data.numTables;
+                    
+                    groups = data.groups;
+                    teamStats = data.teamStats;
+                    teamLogos = data.teamLogos;
+                    groupMatchResults = data.groupMatchResults;
+                    finalRoundMatchResults = data.finalRoundMatchResults;
+                    
+                    // Wiederherstellen der Zeitstempel als Date-Objekte
+                    if (teamStats) {
+                        for (const teamName in teamStats) {
+                            if (teamStats[teamName] && teamStats[teamName].lastPlayedTime) {
+                                teamStats[teamName].lastPlayedTime = new Date(teamStats[teamName].lastPlayedTime);
+                            }
                         }
                     }
-                }
-                if (groups) {
-                    for (const groupKey in groups) {
-                        if (groups[groupKey] && groups[groupKey].lastPlayedTime) { // Added null check for groups[groupKey]
-                            groups[groupKey].lastPlayedTime = new Date(groups[groupKey].lastPlayedTime);
+                    if (groups) {
+                        for (const groupKey in groups) {
+                            if (groups[groupKey] && groups[groupKey].lastPlayedTime) {
+                                groups[groupKey].lastPlayedTime = new Date(groups[groupKey].lastPlayedTime);
+                            }
                         }
                     }
+
+                    preliminaryRoundSchedule = data.preliminaryRoundSchedule || [];
+                    placementRoundSchedule = data.placementRoundSchedule || [];
+                    quarterFinalsSchedule = data.quarterFinalsSchedule || [];
+                    smallSemiFinalsSchedule = data.smallSemiFinalsSchedule || [];
+                    seventhPlaceMatchSchedule = data.seventhPlaceMatchSchedule || [];
+                    fifthPlaceMatchSchedule = data.fifthPlaceMatchSchedule || [];
+                    semiFinalsSchedule = data.semiFinalsSchedule || [];
+                    thirdPlaceMatchSchedule = data.thirdPlaceMatchSchedule || [];
+                    finalMatchSchedule = data.finalMatchSchedule || [];
+                    finalRankings = data.finalRankings || {};
+                    groupStageEndTime = data.groupStageEndTime;
+                    placementRoundStartTime = data.placementRoundStartTime;
+                    quarterFinalsStartTime = data.quarterFinalsStartTime;
+                    smallSemiFinalsStartTime = data.smallSemiFinalsStartTime;
+                    semiFinalsStartTime = data.semiFinalsStartTime;
+
+                    // Rendern der Ansichten
+                    updateTournamentDetailsSummary();
+                    renderPreliminaryRoundSchedule();
+                    renderGroupTables();
+                    updateAllTables();
+                    renderOverallStandingsTable();
+                    renderFinalRankingsTable();
+                    
+                    renderPlacementRoundSchedule();
+                    renderQuarterFinalsSchedule();
+                    renderSmallSemiFinalsSchedule();
+                    renderSeventhAndFifthPlaceMatches();
+                    renderSemiFinalsSchedule();
+                    renderThirdPlaceAndFinalMatches();
+                    
+                    showScreen('tournament-screen');
+                    console.log("Turnierdaten erfolgreich aus Google Sheets geladen.");
+                } else {
+                    document.getElementById('tournament-screen').style.display = 'block';
+                    document.getElementById('tournament-screen').innerHTML = "<p style='text-align: center; font-size: 1.2em; margin-top: 50px;'>Keine Turnierdaten in Google Sheets gefunden oder Daten sind leer. Bitte konfigurieren und generieren Sie das Turnier in der Admin-Ansicht.</p>";
+                    console.warn("Keine Daten in Google Sheets gefunden oder Daten sind leer.");
                 }
-
-                preliminaryRoundSchedule = data.preliminaryRoundSchedule || [];
-                placementRoundSchedule = data.placementRoundSchedule || [];
-                quarterFinalsSchedule = data.quarterFinalsSchedule || [];
-                smallSemiFinalsSchedule = data.smallSemiFinalsSchedule || [];
-                seventhPlaceMatchSchedule = data.seventhPlaceMatchSchedule || [];
-                fifthPlaceMatchSchedule = data.fifthPlaceMatchSchedule || [];
-                semiFinalsSchedule = data.semiFinalsSchedule || [];
-                thirdPlaceMatchSchedule = data.thirdPlaceMatchSchedule || [];
-                finalMatchSchedule = data.finalMatchSchedule || [];
-                finalRankings = data.finalRankings || {};
-                groupStageEndTime = data.groupStageEndTime;
-                placementRoundStartTime = data.placementRoundStartTime;
-                quarterFinalsStartTime = data.quarterFinalsStartTime;
-                smallSemiFinalsStartTime = data.smallSemiFinalsStartTime;
-                semiFinalsStartTime = data.semiFinalsStartTime;
-
-                // Rendern der Ansichten
-                updateTournamentDetailsSummary();
-                renderPreliminaryRoundSchedule();
-                renderGroupTables(); // This creates the HTML structure for the tables
-                updateAllTables(); // This populates the tables with data
-                renderOverallStandingsTable();
-                renderFinalRankingsTable();
-                
-                renderPlacementRoundSchedule();
-                renderQuarterFinalsSchedule();
-                renderSmallSemiFinalsSchedule();
-                renderSeventhAndFifthPlaceMatches();
-                renderSemiFinalsSchedule();
-                renderThirdPlaceAndFinalMatches();
-                
-                showScreen('tournament-screen'); // Zeigt den Turnier-Screen an
-            } else {
-                document.getElementById('tournament-screen').style.display = 'block'; // Make sure the container is visible
-                document.getElementById('tournament-screen').innerHTML = "<p style='text-align: center; font-size: 1.2em; margin-top: 50px;'>Keine Turnierdaten gefunden. Bitte konfigurieren und generieren Sie das Turnier in der Admin-Ansicht und speichern Sie es dort ab.</p>";
+            } catch (error) {
+                console.error("Netzwerkfehler beim Laden aus Google Sheets:", error);
+                document.getElementById('tournament-screen').style.display = 'block';
+                document.getElementById('tournament-screen').innerHTML = "<p style='text-align: center; font-size: 1.2em; margin-top: 50px; color: red;'>Fehler beim Laden der Daten aus Google Sheets. Prüfen Sie Ihre Internetverbindung und die Apps Script URL.</p>";
             }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadTournamentDataFromSheet();
+            // Optional: Auto-Update in Viewer-Seite (alle 10 Sekunden z.B.)
+            setInterval(loadTournamentDataFromSheet, 10000); // Lädt Daten alle 10 Sekunden neu
         });
     </script>
 </head>
