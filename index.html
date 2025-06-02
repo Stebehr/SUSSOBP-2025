@@ -1,0 +1,2985 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Turnierplaner</title>
+    <style>
+        /* Allgemeine Stile für den Body */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+
+        /* Überschrift des Planers */
+        h1 {
+            color: #0056b3;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        /* Hauptcontainer für den Inhalt */
+        .container {
+            max-width: 1600px; /* Increased max-width for side-by-side layout of schedule and final table */
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex; /* Use flexbox for the main content layout */
+            flex-wrap: wrap; /* Allow wrapping on smaller screens */
+            gap: 20px; /* Space between schedule and tables */
+        }
+
+        /* Konfigurations-, Team-Benennungs- und Turnierdetails-Sektionen */
+        .config-section, .team-naming-section, .tournament-details-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            background-color: #f9f9f9;
+            width: 100%; /* Take full width on their respective screens */
+        }
+
+        /* Überschriften der Sektionen */
+        .config-section h2, .team-naming-section h2, .tournament-details-section h2, .cross-games-section h2, .final-round-section h2, .preliminary-round-section h2, .placement-round-section h2, .overall-standings-section h2, .final-rankings-section h2 { /* Updated selectors */
+            color: #0056b3;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #cce5ff;
+            padding-bottom: 5px;
+        }
+
+        /* Formulargruppen für Labels und Inputs */
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group input[type="number"],
+        .form-group input[type="text"],
+        .form-group input[type="time"],
+        .form-group select {
+            width: calc(100% - 22px); /* Passt sich an Padding und Border an */
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        /* Styling für den Logo-Upload-Bereich */
+        .logo-upload-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 5px;
+            margin-bottom: 15px;
+        }
+        .logo-upload-group input[type="file"] {
+            width: auto;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .team-logo-preview {
+            width: 30px; /* Kleinere Vorschau */
+            height: 30px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            object-fit: contain; /* Bild im Rahmen halten */
+            background-color: #f0f0f0;
+            padding: 2px;
+            display: none; /* Standardmäßig ausgeblendet */
+        }
+        .team-logo-preview.active {
+            display: inline-block; /* Anzeigen, wenn ein Logo hochgeladen ist */
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.3s ease;
+            margin-top: 10px;
+            margin-right: 10px; /* Added for spacing between buttons */
+        }
+        .btn:hover:not(:disabled) {
+            background-color: #0056b3;
+        }
+        .btn:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .btn.btn-back {
+            background-color: #6c757d;
+        }
+        .btn.btn-back:hover:not(:disabled) {
+            background-color: #5a6268;
+        }
+
+        /* Turnierbildschirm Container */
+        #tournament-screen {
+            display: flex;
+            width: 100%;
+            gap: 20px;
+            flex-wrap: wrap; /* Allow columns to wrap on smaller screens */
+            flex-direction: row; /* Columns side-by-side */
+            align-items: flex-start; /* Align columns to the top */
+        }
+
+        /* Linker Bereich für den Spielplan */
+        #game-schedule-column {
+            flex: 1; /* Changed from 2 to 1 for more even distribution */
+            min-width: 450px; /* Adjusted min-width for less aggressive shrinking */
+            padding: 20px;
+            background-color: #f9f9f9;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+        }
+
+        /* Wrapper für die Tabellen rechts neben dem Spielplan */
+        #side-tables-wrapper {
+            flex: 1; /* Takes 1 part of available space */
+            min-width: 350px; /* Minimum width for tables */
+            display: flex;
+            flex-direction: column; /* Stack tables vertically within this wrapper */
+            gap: 20px; /* Space between group tables and overall standings */
+            padding: 0; /* Wrapper itself doesn't need padding */
+        }
+
+        /* Gruppentabellen und Gesamtrangliste innerhalb des side-tables-wrapper */
+        #group-tables-container, .overall-standings-card {
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+
+        /* Container für die Endrundentabelle (ganz unten) */
+        #final-rankings-wrapper { /* New wrapper for final rankings */
+            width: 100%; /* Takes full width at the bottom */
+            margin-top: 20px; /* Space from content above */
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* Gruppendivs in der Tabellenspalte und Finaltabelle */
+        .group-table-card, .final-round-card, .placement-round-card, .overall-standings-card, .final-rankings-card { /* Updated selectors */
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        .group-table-card h2, .final-round-card h2, .placement-round-card h2, .overall-standings-card h2, .final-rankings-card h2 { /* Updated selectors */
+            color: #0056b3;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #0056b3;
+            padding-bottom: 10px;
+            margin-top: 0;
+            font-size: 1.2em;
+        }
+
+        /* Tabellenstile für Gruppentabellen und Abschlusstabelle */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            table-layout: fixed; /* Fix column widths */
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 6px; /* Slightly reduced padding for tables */
+            text-align: left;
+            font-size: 0.9em; /* Smaller font for table data */
+        }
+
+        /* NEU: Regeln zur Steuerung der Spaltenbreiten in Gruppentabellen */
+        .group-table-card table th:first-child,
+        .group-table-card table td:first-child {
+            width: 35%; /* Team Name - Larger width */
+        }
+
+        .group-table-card table th:nth-child(n+2), /* Spalte 2 (Spiele) und alle folgenden */
+        .group-table-card table td:nth-child(n+2) {
+            width: 9%; /* Kleinere Breite für die Statistikspalten */
+        }
+        /* ENDE NEUE REGELN */
+
+        th {
+            background-color: #eaf2f8;
+            color: #333;
+            font-weight: bold;
+        }
+        td {
+            background-color: #fff;
+        }
+        tr:nth-child(even) td {
+            background-color: #f6f6f6;
+        }
+
+        /* Styling for long team names in tables */
+        td:first-child { /* Assuming the first column is for team names */
+            white-space: normal; /* Allow wrapping for better readability */
+            overflow: visible; /* Ensure content is visible */
+            text-overflow: clip; /* No ellipsis */
+            max-width: none; /* Remove max-width constraint */
+            word-break: break-word; /* Break long words */
+        }
+
+        /* Eingabefelder für Spielergebnisse */
+        .match-input {
+            display: flex;
+            align-items: center;
+            gap: 5px; /* Reduced gap */
+            margin-bottom: 8px; /* Reduced margin */
+            padding: 6px; /* Reduced padding */
+            border: 1px solid #eee;
+            border-radius: 4px;
+            background-color: #fff;
+            flex-wrap: wrap; /* Allow wrapping of match elements if screen is narrow */
+            font-size: 0.85em; /* Smaller font for match inputs */
+        }
+
+        /* NEU: Container für Score-Eingaben und Button */
+        .score-controls {
+            display: flex;
+            flex-direction: column; /* Stapelt die Elemente vertikal */
+            align-items: flex-start; /* Links ausrichten */
+            gap: 5px; /* Abstand zwischen Input-Feldern und Button */
+            margin-left: auto; /* Sorgt dafür, dass es rechtsbündig bleibt */
+        }
+
+        .score-inputs-row {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        /* ANPASSUNG: Styling für Teamnamen in ALLEN Matches, um sie vertikal zu stapeln */
+        .match-input .team-display { /* Entfernt .preliminary-match, um es global anzuwenden */
+            display: flex;
+            flex-direction: column; /* Stack team names vertically */
+            align-items: flex-start; /* Align to the start */
+            margin-right: 10px; /* Space between names and score inputs */
+            min-width: 150px; /* Ensure enough space for names */
+        }
+
+        .match-input .team-name { /* Entfernt .preliminary-match, um es global anzuwenden */
+            white-space: normal; /* Allow team names to wrap */
+            word-break: break-word; /* Break long words */
+            line-height: 1.2;
+        }
+
+        .match-input input[type="number"] {
+            width: 40px; /* Slightly smaller input width */
+            padding: 6px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .match-input button {
+            padding: 5px 10px; /* Reduced button padding */
+            background-color: #007bff; /* Changed to primary blue */
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8em; /* Smaller button font */
+            transition: background-color 0.3s ease;
+        }
+        .match-input button:hover:not(:disabled) {
+            background-color: #0056b3; /* Darker blue on hover */
+        }
+        .match-input button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        /* Style for the button after score is recorded */
+        .match-input button.recorded {
+            background-color: #28a745; /* Success green */
+            color: white;
+            cursor: default; /* Keep default cursor for "Gespeichert!" */
+        }
+        .match-input button.recorded:hover {
+            background-color: #218838; /* Slightly darker green on hover for "Gespeichert!" */
+        }
+        .match-input button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+
+        .team-name {
+            font-weight: bold;
+            color: #555;
+            /* white-space: nowrap; */ /* Prevent team names from wrapping by default, overridden for preliminary */
+        }
+
+        /* Team Logo im Spielplan und in der Tabelle */
+        .team-logo {
+            height: 18px; /* Smaller size for logos */
+            width: 18px;
+            margin-right: 4px;
+            vertical-align: middle;
+            border: 1px solid #eee;
+            border-radius: 3px;
+            object-fit: contain;
+        }
+
+        /* Match time and table display */
+        .match-time-table {
+            font-weight: bold;
+            margin-right: 8px;
+            color: #007bff;
+            white-space: nowrap; /* Prevent time/table from wrapping */
+            font-size: 0.85em; /* Smaller font for time/table */
+        }
+
+
+        /* Checkbox-Option für Cross-Spiele */
+        .cross-game-option {
+            margin-top: 20px;
+            margin-bottom: 30px;
+            padding: 15px;
+            background-color: #eaf2f8;
+            border: 1px solid #cce5ff;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .cross-game-option input[type="checkbox"] {
+            transform: scale(1.2); /* Checkbox etwas kleiner machen als vorher, aber immer noch sichtbar */
+        }
+        .cross-game-option label {
+            font-size: 1em; /* Reduced font size */
+            color: #004085;
+        }
+
+        /* Visuelle Hervorhebung für Cross-Spiele */
+        .cross-game-match {
+            background-color: #ffeeba; /* Hellgelb */
+            border-color: #ffc107;
+        }
+
+        /* Visuelle Hervorhebung für Finalrunden-Spiele */
+        .final-round-match {
+            background-color: #d4edda; /* Hellgrün */
+            border-color: #28a745;
+        }
+
+        /* Visuelle Hervorhebung für Platzierungsrunden-Spiele */
+        .placement-round-match {
+            background-color: #f8e2e2; /* Hellrot */
+            border-color: #dc3545;
+        }
+
+        /* Visuelle Hervorhebung für die neuen 'kleinen Halbfinals' */
+        .small-semi-final-match {
+            background-color: #fff3cd; /* Light orange/yellow, similar to cross-games but distinct */
+            border-color: #ffc107;
+        }
+
+
+        /* Zusammenfassung der Turnierdetails */
+        #tournament-details-summary {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #eaf8e2; /* Hellgrün */
+            border: 1px solid #d4edda;
+            border-radius: 5px;
+            font-size: 0.9em; /* Smaller font size */
+            color: #155724;
+            width: 100%; /* Take full width at the top of the tournament screen */
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 1200px) { /* Adjusted breakpoint for three columns */
+            #tournament-screen {
+                flex-direction: column; /* Stack columns vertically on smaller screens */
+            }
+            #game-schedule-column, #side-tables-wrapper, #final-rankings-wrapper { /* Adjusted selector */
+                flex: none; /* Remove flex sizing */
+                width: 100%; /* Take full width */
+                min-width: unset; /* Remove min-width constraint */
+                margin-left: 0; /* Remove left margin when stacked */
+            }
+        }
+
+        /* Print styles */
+        @media print {
+            body {
+                margin: 0;
+                padding: 0;
+                background-color: #fff;
+                color: #000;
+            }
+            .container {
+                max-width: none;
+                width: 100%;
+                margin: 0;
+                padding: 10px;
+                box-shadow: none;
+                display: block; /* Stack everything vertically for printing */
+            }
+            .config-section, .team-naming-section, #start-screen, #tournament-details-screen, #team-naming-screen,
+            .btn-back, #print-button { /* Hide elements not relevant for print */
+                display: none !important;
+            }
+            h1 {
+                page-break-after: avoid;
+            }
+            .overall-standings-card, .group-table-card, .final-round-section, .placement-round-section, .preliminary-round-section {
+                page-break-inside: avoid; /* Keep these sections together */
+                border: none;
+                box-shadow: none;
+                margin-bottom: 20px;
+                padding: 0;
+            }
+            table {
+                page-break-inside: auto;
+                width: 100%;
+                table-layout: auto; /* Reset to auto for printing to adjust widths */
+            }
+            th, td {
+                font-size: 0.8em;
+                padding: 4px 6px;
+            }
+            .match-input {
+                page-break-inside: avoid;
+                border: none;
+                padding: 2px 0;
+                margin-bottom: 2px;
+                background-color: transparent;
+                flex-wrap: nowrap; /* Prevent wrapping in print */
+            }
+            .match-input button, .match-input input {
+                display: none; /* Hide inputs and buttons in print */
+            }
+            .match-input span, .match-input img {
+                display: inline;
+            }
+            .team-logo {
+                height: 12px;
+                width: 12px;
+                margin-right: 2px;
+                border-radius: 0; /* No rounded borders for print logo */
+                border: none;
+            }
+            /* Show recorded scores for printing */
+            .match-input::after {
+                content: attr(data-score-display); /* Use a data attribute to display scores */
+                margin-left: 5px;
+                font-weight: bold;
+            }
+            .match-input .team-display { /* Anpassung für Druckansicht, falls Teamnamen doch nebeneinander sollen */
+                flex-direction: row; /* In print, put names back on one line if possible */
+                margin-right: 5px;
+            }
+            .match-input .team-name { /* Anpassung für Druckansicht */
+                white-space: nowrap; /* Try to keep names on one line in print */
+                overflow: hidden;
+                text-overflow: ellipsis;
+                max-width: 100px; /* A reasonable max-width for print */
+            }
+        }
+    </style>
+    <script>
+        // Global variables
+        let numGroups = 3;
+        let teamsPerGroup = 5;
+        let startTime = '09:00';
+        let matchDuration = 10;
+        let breakDuration = 5;
+        let numTables = 1;
+
+        let groups = {};
+        const teamStats = {};
+        const teamLogos = {};
+        const groupMatchResults = {};
+        const finalRoundMatchResults = {'global': []};
+        let preliminaryRoundSchedule = [];
+        let placementRoundSchedule = [];
+        let quarterFinalsSchedule = [];
+        let smallSemiFinalsSchedule = [];
+        let seventhPlaceMatchSchedule = [];
+        let fifthPlaceMatchSchedule = [];
+        let semiFinalsSchedule = [];
+        let thirdPlaceMatchSchedule = [];
+        let finalMatchSchedule = [];
+        let groupStageEndTime = null;
+        let placementRoundStartTime = null;
+        let quarterFinalsStartTime = null;
+        let smallSemiFinalsStartTime = null;
+        let semiFinalsStartTime = null;
+        const finalRankings = {};
+
+        // Function to switch visible screens
+        function showScreen(screenId) {
+            document.getElementById('start-screen').style.display = 'none';
+            document.getElementById('tournament-details-screen').style.display = 'none';
+            document.getElementById('team-naming-screen').style.display = 'none';
+            document.getElementById('tournament-screen').style.display = 'none';
+
+            if (screenId === 'tournament-screen') {
+                document.getElementById(screenId).style.display = 'flex';
+            } else {
+                document.getElementById(screenId).style.display = 'block';
+            }
+        }
+
+        // Function to handle printing
+        function printTournamentPlan() {
+            window.print();
+        }
+
+        // Initialize or reset all tournament data
+        function initializeTournamentData() {
+            for (const teamName in teamStats) {
+                delete teamStats[teamName];
+            }
+            for (const groupKey in groupMatchResults) {
+                delete groupMatchResults[groupKey];
+            }
+            finalRoundMatchResults['global'] = [];
+            preliminaryRoundSchedule = [];
+            placementRoundSchedule = [];
+            quarterFinalsSchedule = [];
+            smallSemiFinalsSchedule = [];
+            seventhPlaceMatchSchedule = [];
+            fifthPlaceMatchSchedule = [];
+            semiFinalsSchedule = [];
+            thirdPlaceMatchSchedule = [];
+            finalMatchSchedule = [];
+
+            for (const key in finalRankings) {
+                if (finalRankings.hasOwnProperty(key)) {
+                    delete finalRankings[key];
+                }
+            }
+
+            // Initialize or reset groupLastPlayedTime for all groups
+            const groupLetters = ['A', 'B', 'C'];
+            groupLetters.forEach(groupKey => {
+                if (!groups[groupKey]) {
+                    groups[groupKey] = { name: `Gruppe ${groupKey}`, teams: [] };
+                }
+                groups[groupKey].lastPlayedTime = null; // NEU: Initialisiere lastPlayedTime für jede Gruppe
+            });
+
+
+            for (const groupKey in groups) {
+                groups[groupKey].teams.forEach(team => {
+                    teamStats[team] = {
+                        spiele: 0,
+                        siege: 0,
+                        unentschieden: 0,
+                        niederlagen: 0,
+                        tore: 0,
+                        gegentore: 0,
+                        tordifferenz: 0,
+                        punkte: 0,
+                        group: groupKey,
+                        lastPlayedTime: null,
+                        lastPlayedTable: null
+                    };
+                });
+                groupMatchResults[groupKey] = [];
+            }
+            groupStageEndTime = null;
+            placementRoundStartTime = null;
+            quarterFinalsStartTime = null;
+            smallSemiFinalsStartTime = null;
+            semiFinalsStartTime = null;
+        }
+
+        function goToDetailConfiguration() {
+            numGroups = parseInt(document.getElementById('numGroups').value);
+            teamsPerGroup = parseInt(document.getElementById('teamsPerGroup').value);
+
+            if (isNaN(numGroups) || numGroups < 1 || numGroups > 3 || isNaN(teamsPerGroup) || teamsPerGroup < 2 || teamsPerGroup > 5) {
+                alert("Bitte geben Sie gültige Werte ein: 1-3 Gruppen und 2-5 Teams pro Gruppe.");
+                return;
+            }
+            showScreen('tournament-details-screen');
+        }
+
+        function configureTeams() {
+            startTime = document.getElementById('startTime').value;
+            matchDuration = parseInt(document.getElementById('matchDuration').value);
+            breakDuration = parseInt(document.getElementById('breakDuration').value);
+            numTables = parseInt(document.getElementById('numTables').value);
+
+            if (isNaN(matchDuration) || matchDuration < 1 || isNaN(breakDuration) || breakDuration < 0 || isNaN(numTables) || numTables < 1) {
+                alert("Bitte geben Sie gültige Werte für Spiellänge, Pausenzeiten und Anzahl der Spieltische ein.");
+                return;
+            }
+
+            const teamNameInputsDiv = document.getElementById('teamNameInputs');
+            teamNameInputsDiv.innerHTML = '';
+            groups = {}; // Reset groups to ensure clean state for new configuration
+
+            const groupLetters = ['A', 'B', 'C'];
+
+            for (let i = 0; i < numGroups; i++) {
+                const groupKey = groupLetters[i];
+                groups[groupKey] = { name: `Gruppe ${groupKey}`, teams: [], lastPlayedTime: null }; // Initialize groupLastPlayedTime
+
+                const groupHeaderDiv = document.createElement('div');
+                groupHeaderDiv.className = 'form-group';
+                groupHeaderDiv.innerHTML = `
+                    <label for="groupName-${groupKey}">Name für Gruppe ${groupKey}:</label>
+                    <input type="text" id="groupName-${groupKey}" value="Gruppe ${groupKey}" placeholder="Name für Gruppe ${groupKey}">
+                `;
+                teamNameInputsDiv.appendChild(groupHeaderDiv);
+
+                for (let j = 0; j < teamsPerGroup; j++) {
+                    const teamId = `team-${groupKey}-${j + 1}`;
+                    const inputDiv = document.createElement('div');
+                    inputDiv.className = 'form-group';
+                    inputDiv.innerHTML = `
+                        <label for="${teamId}">Team ${j + 1} in ${groups[groupKey].name} Name:</label>
+                        <input type="text" id="${teamId}" value="Team ${groupKey}${j + 1}" placeholder="Name für Team ${j + 1}">
+                        <div class="logo-upload-group">
+                            <label for="logo-${teamId}">Logo:</label>
+                            <input type="file" id="logo-${teamId}" accept="image/*" onchange="previewTeamLogo('${teamId}')">
+                            <img id="logo-preview-${teamId}" class="team-logo-preview" src="#" alt="Logo Preview">
+                        </div>
+                    `;
+                    teamNameInputsDiv.appendChild(inputDiv);
+                }
+            }
+            showScreen('team-naming-screen');
+        }
+
+        function previewTeamLogo(teamId) {
+            const fileInput = document.getElementById(`logo-${teamId}`);
+            const previewImg = document.getElementById(`logo-preview-${teamId}`);
+            const file = fileInput.files[0];
+
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    previewImg.src = e.target.result;
+                    previewImg.classList.add('active');
+                };
+                reader.readAsDataURL(file);
+            } else {
+                previewImg.src = "#";
+                previewImg.classList.remove('active');
+            }
+        }
+
+
+        async function generateTournament() {
+            try {
+                const groupLetters = ['A', 'B', 'C'];
+
+                for (const key in teamLogos) {
+                    if (teamLogos.hasOwnProperty(key)) {
+                        delete teamLogos[key];
+                    }
+                }
+
+                const logoPromises = [];
+
+                for (let i = 0; i < numGroups; i++) {
+                    const groupKey = groupLetters[i];
+                    const groupNameInput = document.getElementById(`groupName-${groupKey}`);
+                    let customGroupName = groupNameInput.value.trim();
+                    if (!customGroupName) {
+                        customGroupName = `Gruppe ${groupKey}`;
+                    }
+
+                    groups[groupKey].name = customGroupName;
+                    groups[groupKey].teams = [];
+
+                    for (let j = 0; j < teamsPerGroup; j++) {
+                        const teamId = `team-${groupKey}-${j + 1}`;
+                        const teamNameInput = document.getElementById(teamId);
+                        const logoInput = document.getElementById(`logo-${teamId}`);
+
+                        let teamName = teamNameInput.value.trim();
+                        if (!teamName) {
+                            teamName = `Team ${groupKey}${j + 1}`;
+                        }
+                        groups[groupKey].teams.push(teamName);
+
+                        if (logoInput.files.length > 0) {
+                            const file = logoInput.files[0];
+                            logoPromises.push(new Promise((resolve) => {
+                                const reader = new FileReader();
+                                reader.onload = (e) => {
+                                    teamLogos[teamName] = e.target.result;
+                                    resolve();
+                                };
+                                reader.readAsDataURL(file);
+                            }));
+                        } else {
+                            teamLogos[teamName] = null;
+                        }
+                    }
+                }
+
+                await Promise.all(logoPromises);
+
+                initializeTournamentData();
+                generatePreliminaryRoundSchedule();
+                renderPreliminaryRoundSchedule();
+                renderGroupTables();
+                updateAllTables();
+                updateTournamentDetailsSummary();
+
+                document.getElementById('cross-games-section').style.display = 'none';
+                document.getElementById('final-round-section').style.display = 'block'; // Make final round section visible from the start
+                document.getElementById('quarter-finals-container').innerHTML = '';
+                document.getElementById('small-semi-finals-container').innerHTML = '';
+                document.getElementById('seventh-place-container').innerHTML = '';
+                document.getElementById('fifth-place-container').innerHTML = '';
+                document.getElementById('semi-finals-container').innerHTML = '';
+                document.getElementById('third-place-container').innerHTML = '';
+                document.getElementById('final-container').innerHTML = '';
+
+                document.getElementById('placement-round-section').style.display = 'block'; // Make placement round section visible from the start
+                document.getElementById('placement-matches-container').innerHTML = '';
+
+                renderOverallStandingsTable();
+                renderFinalRankingsTable();
+
+                // Initialize final round matches as TBA but visible, so they can be filled in later
+                generateQuarterFinalMatches(); // This will put TBAs if prelim is not done
+                generateSmallSemiFinalMatches(); // This will put TBAs if QFs are not done
+                generateSeventhAndFifthPlaceMatches(); // This will put TBAs if small semis are not done
+                generateSemiFinalMatches(); // This will put TBAs if QFs are not done
+                generateThirdPlaceAndFinalMatches(); // This will put TBAs if semis are not done
+                updateFinalRoundAdvancements(); // To ensure all TBA matches are rendered correctly
+
+                showScreen('tournament-screen');
+            } catch (error) {
+                console.error("Fehler beim Generieren des Turniers:", error);
+                alert("Es ist ein unerwarteter Fehler aufgetreten. Bitte überprüfen Sie die Browser-Konsole für Details.");
+            }
+        }
+
+        function updateTournamentDetailsSummary() {
+            const summaryDiv = document.getElementById('tournament-details-summary');
+            summaryDiv.innerHTML = `
+                <h3>Turnierdetails:</h3>
+                <p><strong>Startzeit:</strong> ${startTime}</p>
+                <p><strong>Spiellänge:</strong> ${matchDuration} Minuten</p>
+                <p><strong>Pausenzeit:</strong> ${breakDuration} Minuten</p>
+                <p><strong>Anzahl Spieltische:</strong> ${numTables}</p>
+                <p><strong>Gruppen:</strong> ${numGroups}</p>
+                <p><strong>Teams pro Gruppe:</strong> ${teamsPerGroup}</p>
+            `;
+        }
+
+        /**
+         * Berechnet den Spielplan für eine Liste von Matches.
+         * Berücksichtigt die Spielzeit, Pausen, Anzahl der Tische und Fairness bei der Zuweisung.
+         * @param {Array<Object>} matches - Array von Match-Objekten, die geplant werden sollen.
+         * @param {number} matchDuration - Dauer eines Matches in Minuten.
+         * @param {number} breakDuration - Dauer der Pause zwischen Matches in Minuten.
+         * @param {string|Date} currentStartTime - Die Startzeit für die erste Runde als String (HH:MM) oder Date-Objekt.
+         * @param {number} numTables - Anzahl der gleichzeitig verfügbaren Spieltische.
+         * @param {Array<Object>} prevSchedule - Bereits geplanter Spielplan, um die `lastPlayedTime` und `lastPlayedTable` der Teams zu berücksichtigen.
+         * @returns {Array<Object>} Der vollständige, sortierte Spielplan mit Zeiten und Tischen.
+         */
+        function calculateGameSchedule(matches, matchDuration, breakDuration, currentStartTime, numTables, prevSchedule = []) {
+            let startDateTime;
+            if (typeof currentStartTime === 'string') {
+                startDateTime = new Date(`2000-01-01T${currentStartTime}:00`);
+            } else if (currentStartTime instanceof Date) {
+                startDateTime = new Date(currentStartTime.getTime());
+            } else {
+                console.error("Ungültiger Typ für currentStartTime:", currentStartTime);
+                startDateTime = new Date();
+            }
+
+            // Filter out matches that are already in prevSchedule based on their unique ID
+            let gamesToSchedule = [...matches.filter(m => !prevSchedule.some(sg =>
+                sg.match.id === m.id
+            ))];
+            
+            // Re-initialize lastPlayedTime and lastPlayedTable for all teams before scheduling
+            // Also reset groupLastPlayedTime for groups
+            for (const teamName in teamStats) {
+                teamStats[teamName].lastPlayedTime = null;
+                teamStats[teamName].lastPlayedTable = null;
+            }
+            for (const groupKey in groups) {
+                groups[groupKey].lastPlayedTime = null; // Reset group last played time
+            }
+
+
+            // Populate lastPlayedTime and lastPlayedTable from prevSchedule
+            // Also update groupLastPlayedTime
+            prevSchedule.sort((a,b) => {
+                const timeA = new Date(`2000-01-01T${a.time}:00`).getTime();
+                const timeB = new Date(`2000-01-01T${b.time}:00`).getTime();
+                if (timeA !== timeB) return timeA - timeB;
+                return a.table - b.table;
+            }).forEach(game => {
+                const gameDateTime = new Date(`2000-01-01T${game.time}:00`);
+                if (teamStats[game.match.team1] && game.match.team1 !== 'TBA') {
+                    teamStats[game.match.team1].lastPlayedTime = gameDateTime;
+                    teamStats[game.match.team1].lastPlayedTable = game.table;
+                }
+                if (teamStats[game.match.team2] && game.match.team2 !== 'TBA') {
+                    teamStats[game.match.team2].lastPlayedTime = gameDateTime;
+                    teamStats[game.match.team2].lastPlayedTable = game.table;
+                }
+                if (game.match.groupKey && groups[game.match.groupKey]) { // Ensure group exists
+                    groups[game.match.groupKey].lastPlayedTime = gameDateTime; // Update group last played time
+                }
+            });
+
+            const scheduledGames = [...prevSchedule]; // Start with previously scheduled games
+            let currentRoundStartTime = new Date(startDateTime);
+            const slotDuration = matchDuration + breakDuration;
+
+            const maxSchedulingIterations = gamesToSchedule.length * (numTables + 1) * 2;
+            let iterationCount = 0;
+
+            // Store last used table for each group to avoid assigning same group to same table too quickly
+            const groupLastTableUsed = {};
+            for(const groupKey in groups) {
+                groupLastTableUsed[groupKey] = null;
+            }
+            // Populate groupLastTableUsed from previous schedule
+            prevSchedule.forEach(game => {
+                if (game.match.groupKey) {
+                    groupLastTableUsed[game.match.groupKey] = game.table;
+                }
+            });
+
+
+            while (gamesToSchedule.length > 0 && iterationCount < maxSchedulingIterations) {
+                iterationCount++;
+                let gamesInThisRound = [];
+                let tablesUsedInThisRound = new Set();
+                let teamsPlayingInThisRound = new Set();
+                let groupsPlayingInThisRound = new Set();
+
+                // Sort tables by least recent usage to ensure fairness
+                let currentTablesAvailable = Array.from({ length: numTables }, (_, i) => i + 1).sort((a, b) => {
+                    let lastUsageA = 0;
+                    Object.values(teamStats).forEach(stat => {
+                        if (stat.lastPlayedTable === a) lastUsageA = Math.max(lastUsageA, stat.lastPlayedTime ? stat.lastPlayedTime.getTime() : 0);
+                    });
+                    let lastUsageB = 0;
+                    Object.values(teamStats).forEach(stat => {
+                        if (stat.lastPlayedTable === b) lastUsageB = Math.max(lastUsageB, stat.lastPlayedTime ? stat.lastPlayedTime.getTime() : 0);
+                    });
+                    return lastUsageA - lastUsageB;
+                });
+
+                // Sort games to schedule by group last played time first, then by team last played time
+                // This is the crucial part for ensuring all groups get turns
+                let sortedGamesToConsider = [...gamesToSchedule].sort((a, b) => {
+                    const groupA_LastPlayed = a.groupKey && groups[a.groupKey] ? (groups[a.groupKey].lastPlayedTime ? groups[a.groupKey].lastPlayedTime.getTime() : 0) : 0;
+                    const groupB_LastPlayed = b.groupKey && groups[b.groupKey] ? (groups[b.groupKey].lastPlayedTime ? groups[b.groupKey].lastPlayedTime.getTime() : 0) : 0;
+
+                    // Prioritize groups that haven't played for the longest time
+                    if (groupA_LastPlayed !== groupB_LastPlayed) {
+                        return groupA_LastPlayed - groupB_LastPlayed;
+                    }
+
+                    // Secondary sort: individual team last played time
+                    const teamA1LastPlayed = teamStats[a.team1] ? (teamStats[a.team1].lastPlayedTime ? teamStats[a.team1].lastPlayedTime.getTime() : 0) : 0;
+                    const teamA2LastPlayed = teamStats[a.team2] ? (teamStats[a.team2].lastPlayedTime ? teamStats[a.team2].lastPlayedTime.getTime() : 0) : 0;
+                    const minLastPlayedA = Math.min(teamA1LastPlayed, teamA2LastPlayed);
+
+                    const teamB1LastPlayed = teamStats[b.team1] ? (teamStats[b.team1].lastPlayedTime ? teamStats[b.team1].lastPlayedTime.getTime() : 0) : 0;
+                    const teamB2LastPlayed = teamStats[b.team2] ? (teamStats[b.team2].lastPlayedTime ? teamStats[b.team2].lastPlayedTime.getTime() : 0) : 0;
+                    const minLastPlayedB = Math.min(teamB1LastPlayed, teamB2LastPlayed);
+
+                    return minLastPlayedA - minLastPlayedB;
+                });
+
+
+                for (let i = 0; i < numTables; i++) {
+                    const currentTable = currentTablesAvailable[i];
+                    if (!currentTable || tablesUsedInThisRound.has(currentTable)) continue;
+
+                    let bestMatchForThisTable = null;
+                    let bestMatchScore = -Infinity;
+                    let bestMatchOriginalIndex = -1; // To remove from gamesToSchedule
+
+                    for (let j = 0; j < sortedGamesToConsider.length; j++) {
+                        const match = sortedGamesToConsider[j];
+                        const team1 = match.team1;
+                        const team2 = match.team2;
+                        const groupKey = match.groupKey;
+
+                        // Skip if teams are already playing in this round
+                        if (teamsPlayingInThisRound.has(team1) || teamsPlayingInThisRound.has(team2)) {
+                            continue;
+                        }
+
+                        let currentMatchScore = 0;
+
+                        // Heavily penalize TBA matches unless no other options
+                        if (team1 === 'TBA' || team2 === 'TBA') {
+                            currentMatchScore -= 1000000;
+                        }
+
+                        const team1Stat = teamStats[team1];
+                        const team2Stat = teamStats[team2];
+                        const groupStat = groups[groupKey];
+
+                        if (team1Stat && team2Stat) {
+                            const oneSlotAgo = new Date(currentRoundStartTime.getTime() - slotDuration * 60 * 1000);
+
+                            // Priority 1: Prevent teams from playing back-to-back
+                            if ((team1Stat.lastPlayedTime !== null && team1Stat.lastPlayedTime.getTime() >= oneSlotAgo.getTime()) ||
+                                (team2Stat.lastPlayedTime !== null && team2Stat.lastPlayedTime.getTime() >= oneSlotAgo.getTime())) {
+                                currentMatchScore -= 10000; // Very heavy penalty
+                            }
+
+                            // Priority 2: Prioritize groups that haven't played for the longest time
+                            if (groupStat && groupStat.lastPlayedTime !== null) {
+                                currentMatchScore += groupStat.lastPlayedTime.getTime(); // Larger value for longer rest
+                            } else {
+                                currentMatchScore += currentRoundStartTime.getTime() * 2; // Huge bonus for groups that never played or are 'fresh'
+                            }
+
+                            // Priority 3: Try to get different groups on different tables
+                            if (groupKey && groupsPlayingInThisRound.has(groupKey)) {
+                                currentMatchScore -= 500; // Small penalty for same group in the same round
+                            }
+                            // Priority 3.1: Try to spread out groups across tables, don't put same group on same table if avoidable
+                             if (groupLastTableUsed[groupKey] === currentTable && groupStat.lastPlayedTime !== null && groupStat.lastPlayedTime.getTime() >= oneSlotAgo.getTime()) {
+                                currentMatchScore -= 200; // Penalty if group played on this table recently
+                            }
+
+
+                            // Priority 4: Prefer matches where individual teams haven't played for the longest time
+                            currentMatchScore += (team1Stat.lastPlayedTime ? team1Stat.lastPlayedTime.getTime() : 0);
+                            currentMatchScore += (team2Stat.lastPlayedTime ? team2Stat.lastPlayedTime.getTime() : 0);
+
+                            // Tie-breaker: Keep original order for same score
+                            currentMatchScore += (sortedGamesToConsider.length - j); // Small bonus for earlier matches in the current sorted list
+                        } else if (team1 !== 'TBA' || team2 !== 'TBA') {
+                            // If team stats are missing, penalize heavily
+                            console.warn(`Team stats not found for non-TBA team: ${team1} or ${team2}. This might indicate a data inconsistency.`);
+                            currentMatchScore -= 500000;
+                        }
+
+                        if (currentMatchScore > bestMatchScore) {
+                            bestMatchScore = currentMatchScore;
+                            bestMatchForThisTable = match;
+                            bestMatchOriginalIndex = gamesToSchedule.indexOf(match); // Find index in original unscheduled list
+                        }
+                    }
+
+                    if (bestMatchForThisTable) {
+                        gamesInThisRound.push({
+                            match: bestMatchForThisTable,
+                            time: `${currentRoundStartTime.getHours().toString().padStart(2, '0')}:${currentRoundStartTime.getMinutes().toString().padStart(2, '0')}`,
+                            table: currentTable
+                        });
+                        teamsPlayingInThisRound.add(bestMatchForThisTable.team1);
+                        teamsPlayingInThisRound.add(bestMatchForThisTable.team2);
+                        tablesUsedInThisRound.add(currentTable);
+                        if (bestMatchForThisTable.groupKey) {
+                            groupsPlayingInThisRound.add(bestMatchForThisTable.groupKey);
+                        }
+
+                        // Update in-memory stats for the current scheduling process
+                        const gameDateTime = new Date(currentRoundStartTime);
+                        if (teamStats[bestMatchForThisTable.team1] && bestMatchForThisTable.team1 !== 'TBA') {
+                            teamStats[bestMatchForThisTable.team1].lastPlayedTime = gameDateTime;
+                            teamStats[bestMatchForThisTable.team1].lastPlayedTable = currentTable;
+                        }
+                        if (teamStats[bestMatchForThisTable.team2] && bestMatchForThisTable.team2 !== 'TBA') {
+                            teamStats[bestMatchForThisTable.team2].lastPlayedTime = gameDateTime;
+                            teamStats[bestMatchForThisTable.team2].lastPlayedTable = currentTable;
+                        }
+                        if (bestMatchForThisTable.groupKey && groups[bestMatchForThisTable.groupKey]) {
+                            groups[bestMatchForThisTable.groupKey].lastPlayedTime = gameDateTime;
+                            groupLastTableUsed[bestMatchForThisTable.groupKey] = currentTable; // Update last table used by group
+                        }
+                        
+                        // Remove the scheduled match from the master list of games to schedule
+                        gamesToSchedule.splice(bestMatchOriginalIndex, 1);
+                        // Re-sort gamesToConsider for the next table in this round, as gamesToSchedule has changed
+                        sortedGamesToConsider = [...gamesToSchedule].sort((a, b) => {
+                            const groupA_LastPlayed = a.groupKey && groups[a.groupKey] ? (groups[a.groupKey].lastPlayedTime ? groups[a.groupKey].lastPlayedTime.getTime() : 0) : 0;
+                            const groupB_LastPlayed = b.groupKey && groups[b.groupKey] ? (groups[b.groupKey].lastPlayedTime ? groups[b.groupKey].lastPlayedTime.getTime() : 0) : 0;
+                            if (groupA_LastPlayed !== groupB_LastPlayed) {
+                                return groupA_LastPlayed - groupB_LastPlayed;
+                            }
+                            const teamA1LastPlayed = teamStats[a.team1] ? (teamStats[a.team1].lastPlayedTime ? teamStats[a.team1].lastPlayedTime.getTime() : 0) : 0;
+                            const teamA2LastPlayed = teamStats[a.team2] ? (teamStats[a.team2].lastPlayedTime ? teamStats[a.team2].lastPlayedTime.getTime() : 0) : 0;
+                            const minLastPlayedA = Math.min(teamA1LastPlayed, teamA2LastPlayed);
+                            const teamB1LastPlayed = teamStats[b.team1] ? (teamStats[b.team1].lastPlayedTime ? teamStats[b.team1].lastPlayedTime.getTime() : 0) : 0;
+                            const teamB2LastPlayed = teamStats[b.team2] ? (teamStats[b.team2].lastPlayedTime ? teamStats[b.team2].lastPlayedTime.getTime() : 0) : 0;
+                            const minLastPlayedB = Math.min(teamB1LastPlayed, teamB2LastPlayed);
+                            return minLastPlayedA - minLastPlayedB;
+                        });
+                    }
+                }
+
+                if (gamesInThisRound.length > 0) {
+                    scheduledGames.push(...gamesInThisRound);
+                    currentRoundStartTime.setMinutes(currentRoundStartTime.getMinutes() + slotDuration);
+                } else {
+                    // If no games could be scheduled in this round, but there are still games left,
+                    // advance time to avoid infinite loop due to impossible scheduling constraints.
+                    if (gamesToSchedule.length > 0) {
+                        currentRoundStartTime.setMinutes(currentRoundStartTime.getMinutes() + slotDuration);
+                    } else {
+                        break; // No more games to schedule
+                    }
+                }
+            }
+
+            // At the end, sort the entire schedule by time and table
+            scheduledGames.sort((a, b) => {
+                if (a.time !== b.time) {
+                    return a.time.localeCompare(b.time);
+                }
+                return a.table - b.table;
+            });
+
+            return scheduledGames;
+        }
+
+
+        // Generates the schedule for the preliminary round
+        function generatePreliminaryRoundSchedule() {
+            preliminaryRoundSchedule = [];
+            let allGroupMatches = [];
+            const groupLetters = ['A', 'B', 'C'];
+            for (let i = 0; i < numGroups; i++) {
+                const groupKey = groupLetters[i];
+                const groupTeams = groups[groupKey].teams;
+                if (groupTeams && Array.isArray(groupTeams)) {
+                    for (let j = 0; j < groupTeams.length; j++) {
+                        for (let k = j + 1; k < groupTeams.length; k++) {
+                            const matchId = `PR-${groupKey}-${groupTeams[j].replace(/\s/g, '')}-${groupTeams[k].replace(/\s/g, '')}`;
+                            allGroupMatches.push({ groupKey: groupKey, team1: groupTeams[j], team2: groupTeams[k], isPlacementRound: false, isFinalRound: false, isSmallSemiFinal: false, is7thPlace: false, is5thPlace: false, id: matchId });
+                        }
+                    }
+                }
+            }
+
+            preliminaryRoundSchedule = calculateGameSchedule(allGroupMatches, matchDuration, breakDuration, startTime, numTables);
+
+            if (preliminaryRoundSchedule.length > 0) {
+                const lastScheduledGroupGame = preliminaryRoundSchedule[preliminaryRoundSchedule.length - 1];
+                const [hours, minutes] = lastScheduledGroupGame.time.split(':').map(Number);
+                let tempEndTime = new Date(`2000-01-01T${hours}:${minutes}:00`);
+                tempEndTime.setMinutes(tempEndTime.getMinutes() + matchDuration);
+                tempEndTime.setMinutes(tempEndTime.getMinutes() + breakDuration);
+                groupStageEndTime = `${tempEndTime.getHours().toString().padStart(2, '0')}:${tempEndTime.getMinutes().toString().padStart(2, '0')}`;
+            } else {
+                groupStageEndTime = startTime;
+            }
+            placementRoundStartTime = groupStageEndTime;
+            quarterFinalsStartTime = groupStageEndTime; // Initialize this here as well for potential empty placement rounds
+            smallSemiFinalsStartTime = groupStageEndTime; // Initialize this as well
+            semiFinalsStartTime = groupStageEndTime; // Initialize this as well
+        }
+
+        // Renders the schedule for the preliminary round
+        function renderPreliminaryRoundSchedule() {
+            const scheduledMatchesContainer = document.getElementById('scheduled-matches-container');
+            scheduledMatchesContainer.innerHTML = '';
+
+            preliminaryRoundSchedule.forEach(scheduleEntry => {
+                const team1 = scheduleEntry.match.team1;
+                const team2 = scheduleEntry.match.team2;
+                const groupKeyForMatch = scheduleEntry.match.groupKey;
+                const matchId = scheduleEntry.match.id;
+
+                let existingMatch = groupMatchResults[groupKeyForMatch]?.find(m => m.id === matchId);
+
+                // Pass true for `isPreliminaryMatch`
+                const matchInput = createMatchInput(groupKeyForMatch, team1, team2, false, false, false, false, false, false, existingMatch, scheduleEntry.time, scheduleEntry.table, matchId, 'Preliminary', true);
+                scheduledMatchesContainer.appendChild(matchInput);
+            });
+        }
+
+
+        // Creates the HTML element for a game result input field
+        function createMatchInput(groupKey, team1, team2, isCrossGame = false, isFinalRound = false, isPlacementRound = false, isSmallSemiFinal = false, is7thPlace = false, is5thPlace = false, initialScores = null, gameTime = null, tableNumber = null, matchId = null, matchType = null, isPreliminaryMatch = false) {
+            const div = document.createElement('div');
+            div.className = 'match-input';
+            if (matchId) div.setAttribute('data-match-id', matchId);
+            if (matchType) div.setAttribute('data-match-type', matchType);
+            // if (isPreliminaryMatch) div.classList.add('preliminary-match'); // This class is no longer needed for vertical team names due to broader CSS rule
+
+            if (is7thPlace || is5thPlace) {
+                div.classList.add('placement-round-match');
+            } else if (isSmallSemiFinal) {
+                div.classList.add('small-semi-final-match');
+            } else if (isPlacementRound) {
+                div.classList.add('placement-round-match');
+            } else if (isFinalRound) {
+                div.classList.add('final-round-match');
+            }
+
+            const team1LogoSrc = teamLogos[team1] || '';
+            const team2LogoSrc = teamLogos[team2] || '';
+
+            const team1LogoHtml = team1LogoSrc ? `<img src="${team1LogoSrc}" alt="${team1} Logo" class="team-logo">` : '';
+            const team2LogoHtml = team2LogoSrc ? `<img src="${team2LogoSrc}" alt="${team2} Logo" class="team-logo">` : '';
+
+            const displayGameTime = gameTime && gameTime !== 'NaN:NaN' ? gameTime : 'N/A';
+            const timeAndTableDisplay = (displayGameTime !== 'N/A' && tableNumber) ?
+                `<span class="match-time-table">${displayGameTime} (Tisch ${tableNumber})</span>` : '';
+
+            const existingScore1 = initialScores ? (initialScores.score1 !== null ? initialScores.score1 : '') : '';
+            const existingScore2 = initialScores ? (initialScores.score2 !== null ? initialScores.score2 : '') : '';
+            const isRecorded = (initialScores && initialScores.score1 !== null && initialScores.score2 !== null);
+            
+            const initialDisableTeams = (team1 === 'TBA' || team2 === 'TBA'); // Teams TBA means inputs and button are always disabled initially
+
+            // Inputs are never fully disabled unless teams are TBA
+            const inputsDisabledAttr = initialDisableTeams ? 'disabled' : '';
+
+            // Button state logic:
+            // If teams are TBA, button is disabled with default text.
+            // If results are recorded, button is "Gespeichert!" and disabled.
+            // Otherwise, button is "Ergebnis eintragen" and enabled if scores are valid.
+            let buttonClass = 'btn';
+            let buttonText = 'Ergebnis eintragen';
+            let buttonDisabledAttr = '';
+
+            if (initialDisableTeams) {
+                buttonText = 'Ergebnis eintragen';
+                buttonDisabledAttr = 'disabled';
+            } else if (isRecorded) {
+                buttonClass = 'btn recorded';
+                buttonText = 'Gespeichert!';
+                buttonDisabledAttr = 'disabled';
+            } else {
+                // If not recorded and not TBA, button is initially enabled if scores are valid, otherwise disabled.
+                // This will be handled by the input event listener for initial validation too.
+                const currentScore1 = parseInt(existingScore1);
+                const currentScore2 = parseInt(existingScore2);
+                if (isNaN(currentScore1) || isNaN(currentScore2) || currentScore1 === currentScore2) {
+                    buttonDisabledAttr = 'disabled';
+                }
+            }
+
+            div.innerHTML = `
+                ${timeAndTableDisplay}
+                <div class="team-display">
+                    ${team1LogoHtml}<span class="team-name">${team1}</span>
+                    <span class="team-name">${team2LogoHtml}${team2}</span>
+                </div>
+                <div class="score-controls">
+                    <div class="score-inputs-row">
+                        <input type="number" data-team1="${team1}" data-team2="${team2}" class="score-input score1" min="0" value="${existingScore1}" ${inputsDisabledAttr}> :
+                        <input type="number" data-team1="${team1}" data-team2="${team2}" class="score-input score2" min="0" value="${existingScore2}" ${inputsDisabledAttr}>
+                    </div>
+                    <button class="${buttonClass}" onclick="recordScore('${groupKey}', '${team1}', '${team2}', this.parentNode.parentNode, false, ${isFinalRound}, ${isPlacementRound}, ${isSmallSemiFinal}, ${is7thPlace}, ${is5thPlace}, this, '${matchId || ''}', '${matchType || ''}')" ${buttonDisabledAttr}>${buttonText}</button>
+                </div>
+            `;
+
+            const score1Input = div.querySelector('.score1');
+            const score2Input = div.querySelector('.score2');
+            const buttonElement = div.querySelector('button');
+
+            // Handle initial disabled state for inputs if teams are TBA
+            if (initialDisableTeams) {
+                score1Input.disabled = true;
+                score2Input.disabled = true;
+            }
+
+            const inputs = [score1Input, score2Input];
+            inputs.forEach(input => {
+                input.addEventListener('input', () => {
+                    // Check if current scores are valid integers
+                    const currentScore1 = parseInt(score1Input.value);
+                    const currentScore2 = parseInt(score2Input.value);
+                    const areScoresValid = !isNaN(currentScore1) && !isNaN(currentScore2) && currentScore1 !== currentScore2;
+
+                    // Get the latest stored scores for comparison
+                    let storedMatchData = null;
+                    if (isFinalRound || isPlacementRound || isSmallSemiFinal || is7thPlace || is5thPlace) {
+                        storedMatchData = finalRoundMatchResults['global'].find(m => m.id === matchId);
+                    } else {
+                        storedMatchData = groupMatchResults[groupKey]?.find(m => m.id === matchId);
+                    }
+                    const storedScore1 = storedMatchData ? storedMatchData.score1 : null;
+                    const storedScore2 = storedMatchData ? storedMatchData.score2 : null;
+
+                    // If teams are TBA, inputs and button remain disabled regardless of input values
+                    if (initialDisableTeams) {
+                        buttonElement.textContent = 'Ergebnis eintragen';
+                        buttonElement.classList.remove('recorded');
+                        buttonElement.classList.add('btn');
+                        buttonElement.disabled = true;
+                        score1Input.disabled = true;
+                        score2Input.disabled = true;
+                        return; // Exit early as nothing can be changed
+                    }
+
+                    // Enable inputs if they were disabled (e.g., if a TBA match got its teams assigned)
+                    score1Input.disabled = false;
+                    score2Input.disabled = false;
+
+                    if (areScoresValid) {
+                        // Check if current scores are different from stored scores
+                        if (currentScore1 !== storedScore1 || currentScore2 !== storedScore2) {
+                            buttonElement.textContent = 'Ergebnis aktualisieren';
+                            buttonElement.classList.remove('recorded');
+                            buttonElement.classList.add('btn');
+                            buttonElement.disabled = false; // Enable to allow update
+                        } else {
+                            // Scores are valid and identical to stored, so consider it saved
+                            buttonElement.textContent = 'Gespeichert!';
+                            buttonElement.classList.add('recorded');
+                            buttonElement.classList.remove('btn');
+                            buttonElement.disabled = true; // Disable as no changes need saving
+                        }
+                    } else {
+                        // Scores are not valid (e.g., empty, not numbers, or equal)
+                        buttonElement.textContent = 'Ergebnis eintragen';
+                        buttonElement.classList.remove('recorded');
+                        buttonElement.classList.add('btn');
+                        buttonElement.disabled = true; // Disable until valid scores are entered
+                    }
+                });
+            });
+
+            // Set a data attribute for print view if recorded
+            if (isRecorded) {
+                div.setAttribute('data-score-display', `${existingScore1} : ${existingScore2}`);
+            } else {
+                div.removeAttribute('data-score-display');
+            }
+
+            return div;
+        }
+
+        function recordScore(groupKey, team1, team2, parentNode, isCrossGame = false, isFinalRound = false, isPlacementRound = false, isSmallSemiFinal = false, is7thPlace = false, is5thPlace = false, buttonElement, matchId = null, matchType = null) {
+            const score1Input = parentNode.querySelector('.score1');
+            const score2Input = parentNode.querySelector('.score2');
+            const score1 = parseInt(score1Input.value);
+            const score2 = parseInt(score2Input.value);
+
+            if (isNaN(score1) || isNaN(score2)) {
+                alert("Bitte gültige Ergebnisse (Zahlen) eingeben.");
+                return;
+            }
+
+            if (score1 === score2) {
+                alert("Unentschieden sind in diesem Turnier nicht möglich. Bitte geben Sie ein klares Ergebnis ein.");
+                return;
+            }
+
+            const matchData = { team1, team2, score1, score2 };
+            if (matchId) {
+                matchData.id = matchId;
+                matchData.type = matchType;
+            }
+            if (isPlacementRound) {
+                matchData.isPlacementRound = true;
+            }
+            if (isFinalRound) {
+                matchData.isFinalRound = true;
+            }
+            if (isSmallSemiFinal) {
+                matchData.isSmallSemiFinal = true;
+            }
+            if (is7thPlace) {
+                matchData.is7thPlace = true;
+            }
+            if (is5thPlace) {
+                matchData.is5thPlace = true;
+            }
+
+
+            if (isPlacementRound || isFinalRound || isSmallSemiFinal || is7thPlace || is5thPlace) {
+                if (!finalRoundMatchResults['global']) {
+                    finalRoundMatchResults['global'] = [];
+                }
+                let existingMatchIndex = finalRoundMatchResults['global'].findIndex(m =>
+                    m.id === matchId
+                );
+                if (existingMatchIndex !== -1) {
+                    finalRoundMatchResults['global'][existingMatchIndex] = matchData;
+                } else {
+                    finalRoundMatchResults['global'].push(matchData);
+                }
+                updateFinalRoundAdvancements(); // This now orchestrates all final and placement rounds
+                updatePlacementRoundAdvancements(); // This will specifically handle placement round updates.
+            } else {
+                if (!groupMatchResults[groupKey]) {
+                    groupMatchResults[groupKey] = [];
+                }
+                let existingMatchIndex = groupMatchResults[groupKey].findIndex(m =>
+                    (m.team1 === team1 && m.team2 === team2 && m.id === matchId) || (m.team1 === team2 && m.team2 === team1 && m.id === matchId)
+                );
+                if (existingMatchIndex !== -1) {
+                    groupMatchResults[groupKey][existingMatchIndex] = matchData;
+                } else {
+                    groupMatchResults[groupKey].push(matchData);
+                }
+            }
+
+
+            // Update button state immediately after saving
+            if (buttonElement) {
+                buttonElement.textContent = 'Gespeichert!';
+                buttonElement.classList.add('recorded');
+                buttonElement.classList.remove('btn');
+                buttonElement.disabled = true;
+                // Inputs should remain enabled for future corrections, so we remove the disable line
+                // parentNode.querySelectorAll('input').forEach(input => input.disabled = true);
+            }
+
+            // Set data attribute for print view
+            parentNode.setAttribute('data-score-display', `${score1} : ${score2}`);
+
+
+            calculateAllStats();
+            updateAllTables();
+            checkAndGenerateOverallStandingsAutomatically();
+            checkAndTriggerNextRoundsAutomatically(); // New function to check all subsequent rounds
+        }
+
+        // New function to check and trigger subsequent rounds based on dependencies
+        function checkAndTriggerNextRoundsAutomatically() {
+            const allPrelimGamesRecorded = preliminaryRoundSchedule.every(s => {
+                const group = s.match.groupKey;
+                const matchFound = groupMatchResults[group]?.find(m => m.id === s.match.id);
+                return matchFound && matchFound.score1 !== null && matchFound.score2 !== null;
+            });
+
+            if (allPrelimGamesRecorded) {
+                // 1. Placement Round (P13, P11, P9)
+                generatePlacementMatches();
+                renderPlacementRoundSchedule();
+
+                const allPlacementGamesRecorded = placementRoundSchedule.every(s => finalRoundMatchResults['global'].some(m => m.id === s.match.id && m.score1 !== null && m.score2 !== null));
+                
+                // 2. Quarter-Finals (VF1-VF4)
+                if (allPlacementGamesRecorded) {
+                    generateQuarterFinalMatches();
+                    renderQuarterFinalsSchedule();
+                } else {
+                    // Render TBAs if not ready
+                    generateQuarterFinalMatchesTBA();
+                    renderQuarterFinalsSchedule();
+                }
+
+                const allQuarterFinalsRecorded = quarterFinalsSchedule.every(s => finalRoundMatchResults['global'].some(m => m.id === s.match.id && m.score1 !== null && m.score2 !== null));
+
+                // 3. Small Semi-Finals (KHF1, KHF2) and Semi-Finals (HF1, HF2)
+                if (allQuarterFinalsRecorded) {
+                    generateSmallSemiFinalMatches();
+                    renderSmallSemiFinalsSchedule();
+                    generateSemiFinalMatches();
+                    renderSemiFinalsSchedule();
+                } else {
+                    // Render TBAs if not ready
+                    generateSmallSemiFinalMatchesTBA();
+                    renderSmallSemiFinalsSchedule();
+                    generateSemiFinalMatchesTBA();
+                    renderSemiFinalsSchedule();
+                }
+
+                const allSmallSemiFinalsRecorded = smallSemiFinalsSchedule.every(s => finalRoundMatchResults['global'].some(m => m.id === s.match.id && m.score1 !== null && m.score2 !== null));
+
+                // 4. 7th and 5th Place Matches (P7, P5)
+                if (allSmallSemiFinalsRecorded) {
+                    generateSeventhAndFifthPlaceMatches();
+                    renderSeventhAndFifthPlaceMatches();
+                } else {
+                    // Render TBAs if not ready
+                    generateSeventhAndFifthPlaceMatchesTBA();
+                    renderSeventhAndFifthPlaceMatches();
+                }
+                
+                const allSemiFinalsRecorded = semiFinalsSchedule.every(s => finalRoundMatchResults['global'].some(m => m.id === s.match.id && m.score1 !== null && m.score2 !== null));
+
+                // 5. 3rd Place Match (P3)
+                if (allSemiFinalsRecorded) {
+                    generateThirdPlaceAndFinalMatches(); // This function handles both P3 and F
+                    renderThirdPlaceAndFinalMatches();
+                } else {
+                    // Render TBAs for P3 and F if not ready
+                    generateThirdPlaceAndFinalMatchesTBA();
+                    renderThirdPlaceAndFinalMatches();
+                }
+
+                // 6. Final (F)
+                const allThirdPlaceRecorded = thirdPlaceMatchSchedule.every(s => finalRoundMatchResults['global'].some(m => m.id === s.match.id && m.score1 !== null && m.score2 !== null));
+                if (allThirdPlaceRecorded) {
+                    generateThirdPlaceAndFinalMatches(); // Ensure final is updated if only P3 was recorded
+                    renderThirdPlaceAndFinalMatches();
+                } else {
+                    generateThirdPlaceAndFinalMatchesTBA(); // Still show TBA if P3 isn't done
+                    renderThirdPlaceAndFinalMatches();
+                }
+            }
+            updateFinalRoundAdvancements(); // Re-evaluate all advancements after all checks
+        }
+
+        // Function that checks if the overall standings can be generated automatically
+        function checkAndGenerateOverallStandingsAutomatically() {
+            const allPrelimGamesRecorded = preliminaryRoundSchedule.every(s => {
+                const group = s.match.groupKey;
+                const matchFound = groupMatchResults[group]?.find(m => m.id === s.match.id);
+                return matchFound && matchFound.score1 !== null && matchFound.score2 !== null;
+            });
+
+            if (allPrelimGamesRecorded) {
+                updateOverallStandings();
+            }
+        }
+
+        // Helper function to update team statistics for preliminary and cross games
+        function updateTeamStatsForPreliminaryAndCrossGames(teamStat, ownScore, opponentScore) {
+            teamStat.spiele = (teamStat.spiele || 0) + 1;
+            teamStat.tore = (teamStat.tore || 0) + ownScore;
+            teamStat.gegentore = (teamStat.gegentore || 0) + opponentScore;
+            teamStat.tordifferenz = teamStat.tore - teamStat.gegentore;
+
+            if (ownScore > opponentScore) {
+                teamStat.siege = (teamStat.siege || 0) + 1;
+                teamStat.punkte = (teamStat.punkte || 0) + 3;
+            } else if (ownScore < opponentScore) {
+                teamStat.niederlagen = (teamStat.niederlagen || 0) + 1;
+            }
+        }
+
+        function calculateAllStats() {
+            // Store current last played times for teams and groups before resetting
+            const tempLastPlayedTeamInfo = {};
+            for (const teamName in teamStats) {
+                tempLastPlayedTeamInfo[teamName] = {
+                    lastPlayedTime: teamStats[teamName].lastPlayedTime,
+                    lastPlayedTable: teamStats[teamName].lastPlayedTable
+                };
+            }
+            const tempLastPlayedGroupInfo = {};
+            for (const groupKey in groups) {
+                tempLastPlayedGroupInfo[groupKey] = groups[groupKey].lastPlayedTime;
+            }
+
+            // Reset all stats for recalculation
+            for (const teamName in teamStats) {
+                const group = teamStats[teamName].group;
+                teamStats[teamName] = {
+                    spiele: 0,
+                    siege: 0,
+                    unentschieden: 0,
+                    niederlagen: 0,
+                    tore: 0,
+                    gegentore: 0,
+                    tordifferenz: 0,
+                    punkte: 0,
+                    group: group,
+                    lastPlayedTime: tempLastPlayedTeamInfo[teamName].lastPlayedTime, // Restore last played time
+                    lastPlayedTable: tempLastPlayedTeamInfo[teamName].lastPlayedTable // Restore last played table
+                };
+            }
+            for (const groupKey in groups) {
+                groups[groupKey].lastPlayedTime = tempLastPlayedGroupInfo[groupKey]; // Restore group last played time
+            }
+
+
+            for (const groupKey in groupMatchResults) {
+                groupMatchResults[groupKey].forEach(match => {
+                    if (match.score1 !== null && match.score2 !== null && teamStats[match.team1] && teamStats[match.team2]) {
+                        updateTeamStatsForPreliminaryAndCrossGames(teamStats[match.team1], match.score1, match.score2);
+                        updateTeamStatsForPreliminaryAndCrossGames(teamStats[match.team2], match.score2, match.score1);
+                    }
+                });
+            }
+        }
+
+        function renderGroupTables() {
+            const groupTablesContainer = document.getElementById('group-tables-container');
+            groupTablesContainer.innerHTML = '';
+
+            const groupLetters = ['A', 'B', 'C'];
+            for (let i = 0; i < numGroups; i++) {
+                const groupKey = groupLetters[i];
+                if (groups[groupKey]) {
+                    const groupTableCard = document.createElement('div');
+                    groupTableCard.className = 'group-table-card';
+                    groupTableCard.innerHTML = `
+                        <h2>Gruppe ${groupKey} (${groups[groupKey].name})</h2>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Team</th>
+                                    <th>Spiele</th>
+                                    <th>Siege</th>
+                                    <th>Niederl.</th>
+                                    <th>Tore</th>
+                                    <th>Gegentore</th>
+                                    <th>Tordiff.</th>
+                                    <th>Punkte</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tableBody${groupKey}"></tbody>
+                        </table>
+                    `;
+                    groupTablesContainer.appendChild(groupTableCard);
+                }
+            }
+        }
+
+        function updateTable(groupKey) {
+            const tableBody = document.getElementById(`tableBody${groupKey}`);
+            if (!tableBody) return;
+
+            let sortedTeams = Object.keys(teamStats)
+                .filter(teamName => teamStats[teamName].group === groupKey)
+                .map(teamName => ({ name: teamName, ...teamStats[teamName] }));
+
+            sortedTeams.sort((a, b) => {
+                if (b.punkte !== a.punkte) {
+                    return b.punkte - a.punkte;
+                }
+                if (b.tordifferenz !== a.tordifferenz) {
+                    return b.tordifferenz - a.tordifferenz;
+                }
+                return b.tore - a.tore;
+            });
+
+            tableBody.innerHTML = '';
+
+            sortedTeams.forEach(team => {
+                const row = tableBody.insertRow();
+                const teamLogoInTable = teamLogos[team.name] ? `<img src="${teamLogos[team.name]}" alt="${team.name} Logo" class="team-logo">` : '';
+                // Set the title attribute for full team name on hover
+                row.innerHTML = `
+                    <td title="${team.name}">${teamLogoInTable} ${team.name}</td>
+                    <td>${team.spiele}</td>
+                    <td>${team.siege}</td>
+                    <td>${team.niederlagen}</td>
+                    <td>${team.tore}</td>
+                    <td>${team.gegentore}</td>
+                    <td>${team.tordifferenz}</td>
+                    <td>${team.punkte}</td>
+                `;
+            });
+        }
+
+        function updateAllTables() {
+            calculateAllStats();
+            const groupLetters = ['A', 'B', 'C'];
+            for (let i = 0; i < numGroups; i++) {
+                const groupKey = groupLetters[i];
+                if (groups[groupKey]) {
+                    updateTable(groupKey);
+                }
+            }
+            updateOverallStandings();
+        }
+
+        // --- Placement Round Logic (P13, P11, P9) ---
+        function generatePlacementMatches() {
+            const allTeamsSorted = getCombinedRanking();
+
+            // Only schedule if all preliminary games are recorded
+            const allPrelimGamesRecorded = preliminaryRoundSchedule.every(s => {
+                const group = s.match.groupKey;
+                const matchFound = groupMatchResults[group]?.find(m => m.id === s.match.id);
+                return matchFound && matchFound.score1 !== null && matchFound.score2 !== null;
+            });
+
+            if (!allPrelimGamesRecorded) {
+                generatePlacementMatchesTBA();
+                return;
+            }
+
+            let currentPlacementStartTime;
+            if (preliminaryRoundSchedule.length > 0) {
+                const lastPreliminaryGame = preliminaryRoundSchedule.slice(-1)[0];
+                currentPlacementStartTime = getNextAvailableTime(lastPreliminaryGame.time);
+            } else {
+                currentPlacementStartTime = startTime;
+            }
+            placementRoundStartTime = currentPlacementStartTime;
+
+
+            const newPlacementMatches = [];
+            
+            // Assign 15th place directly if there are 15 teams
+            if (allTeamsSorted.length >= 15 && !finalRankings[15]) {
+                finalRankings[15] = allTeamsSorted[14].name;
+            }
+
+            const team14 = allTeamsSorted.length >= 14 ? allTeamsSorted[13].name : 'TBA';
+            const team13 = allTeamsSorted.length >= 13 ? allTeamsSorted[12].name : 'TBA';
+            let p13Match = { id: 'P13', team1: team14, team2: team13, isPlacementRound: true, isFinalRound: false, isSmallSemiFinal: false, is7thPlace: false, is5thPlace: false, type: 'P13' };
+            if (!placementRoundSchedule.some(m => m.match.id === 'P13')) {
+                newPlacementMatches.push(p13Match);
+            } else {
+                let existingMatch = placementRoundSchedule.find(m => m.match.id === 'P13').match;
+                existingMatch.team1 = p13Match.team1;
+                existingMatch.team2 = p13Match.team2;
+            }
+
+            const team12 = allTeamsSorted.length >= 12 ? allTeamsSorted[11].name : 'TBA';
+            const team11 = allTeamsSorted.length >= 11 ? allTeamsSorted[10].name : 'TBA';
+            let p11Match = { id: 'P11', team1: team12, team2: team11, isPlacementRound: true, isFinalRound: false, isSmallSemiFinal: false, is7thPlace: false, is5thPlace: false, type: 'P11' };
+            if (!placementRoundSchedule.some(m => m.match.id === 'P11')) {
+                newPlacementMatches.push(p11Match);
+            } else {
+                let existingMatch = placementRoundSchedule.find(m => m.match.id === 'P11').match;
+                existingMatch.team1 = p11Match.team1;
+                existingMatch.team2 = p11Match.team2;
+            }
+
+            const team10 = allTeamsSorted.length >= 10 ? allTeamsSorted[9].name : 'TBA';
+            const team9 = allTeamsSorted.length >= 9 ? allTeamsSorted[8].name : 'TBA';
+            let p9Match = { id: 'P9', team1: team10, team2: team9, isPlacementRound: true, isFinalRound: false, isSmallSemiFinal: false, is7thPlace: false, is5thPlace: false, type: 'P9' };
+            if (!placementRoundSchedule.some(m => m.match.id === 'P9')) {
+                newPlacementMatches.push(p9Match);
+            } else {
+                let existingMatch = placementRoundSchedule.find(m => m.match.id === 'P9').match;
+                existingMatch.team1 = p9Match.team1;
+                existingMatch.team2 = p9Match.team2;
+            }
+
+            let allScheduledGamesForPlacement = [
+                ...preliminaryRoundSchedule,
+                // Do not include placementRoundSchedule here yet as it's being updated
+                // Filter out existing placement games from newPlacementMatches if they are already in the schedule
+                ...placementRoundSchedule.filter(s => newPlacementMatches.every(nm => nm.id !== s.match.id)).map(s => ({ match: s.match, time: s.time, table: s.table }))
+            ];
+            
+            const combinedScheduledGames = calculateGameSchedule(newPlacementMatches, matchDuration, breakDuration, currentPlacementStartTime, numTables, allScheduledGamesForPlacement);
+            
+            placementRoundSchedule = combinedScheduledGames.filter(s => s.match.isPlacementRound);
+            
+            // Re-sort to maintain order after new matches might have been added
+            placementRoundSchedule.sort((a, b) => {
+                const typeOrder = { 'P13': 1, 'P11': 2, 'P9': 3 };
+                if (typeOrder[a.match.type] !== typeOrder[b.match.type]) {
+                    return typeOrder[a.match.type] - typeOrder[b.match.type];
+                }
+                if (a.time !== b.time) return a.time.localeCompare(b.time);
+                return a.table - b.table;
+            });
+
+            renderPlacementRoundSchedule();
+            updatePlacementRoundMatchButtonStates();
+        }
+
+        // Generate TBA matches for placement round if not ready
+        function generatePlacementMatchesTBA() {
+            const placementMatchesContainer = document.getElementById('placement-matches-container');
+            placementMatchesContainer.innerHTML = '';
+
+            let currentPlacementStartTime;
+            if (preliminaryRoundSchedule.length > 0) {
+                const lastPreliminaryGame = preliminaryRoundSchedule.slice(-1)[0];
+                currentPlacementStartTime = getNextAvailableTime(lastPreliminaryGame.time);
+            } else {
+                currentPlacementStartTime = startTime;
+            }
+            placementRoundStartTime = currentPlacementStartTime;
+
+            const newTBA_PlacementMatches = [];
+
+            // Add P13 if not already in schedule
+            if (!placementRoundSchedule.some(m => m.match.id === 'P13')) {
+                 newTBA_PlacementMatches.push({ id: 'P13', team1: 'TBA', team2: 'TBA', isPlacementRound: true, type: 'P13' });
+            }
+            // Add P11 if not already in schedule
+            if (!placementRoundSchedule.some(m => m.match.id === 'P11')) {
+                 newTBA_PlacementMatches.push({ id: 'P11', team1: 'TBA', team2: 'TBA', isPlacementRound: true, type: 'P11' });
+            }
+            // Add P9 if not already in schedule
+            if (!placementRoundSchedule.some(m => m.match.id === 'P9')) {
+                 newTBA_PlacementMatches.push({ id: 'P9', team1: 'TBA', team2: 'TBA', isPlacementRound: true, type: 'P9' });
+            }
+
+            // Only call calculateGameSchedule if there are new TBA matches to add
+            if (newTBA_PlacementMatches.length > 0) {
+                const combinedScheduledGames = calculateGameSchedule(newTBA_PlacementMatches, matchDuration, breakDuration, currentPlacementStartTime, numTables, placementRoundSchedule);
+                // Update placementRoundSchedule to include newly scheduled TBA matches
+                placementRoundSchedule = combinedScheduledGames.filter(s => s.match.isPlacementRound);
+            }
+            
+            // Re-sort to maintain order
+            placementRoundSchedule.sort((a, b) => {
+                const typeOrder = { 'P13': 1, 'P11': 2, 'P9': 3 };
+                if (typeOrder[a.match.type] !== typeOrder[b.match.type]) {
+                    return typeOrder[a.match.type] - typeOrder[b.match.type];
+                }
+                if (a.time !== b.time) return a.time.localeCompare(b.time);
+                return a.table - b.table;
+            });
+        }
+
+
+        // Renders the schedule for the placement round
+        function renderPlacementRoundSchedule() {
+            const placementMatchesContainer = document.getElementById('placement-matches-container');
+            placementMatchesContainer.innerHTML = '';
+
+            const orderedPlacementMatches = [];
+            const matchOrder = ['P13', 'P11', 'P9'];
+
+            matchOrder.forEach(type => {
+                const matchesOfType = placementRoundSchedule.filter(entry => entry.match.type === type);
+                matchesOfType.sort((a, b) => {
+                    if (a.time !== b.time) return a.time.localeCompare(b.time);
+                    return a.table - b.table;
+                });
+                orderedPlacementMatches.push(...matchesOfType);
+            });
+
+            let currentHeading = "";
+
+            orderedPlacementMatches.forEach(scheduleEntry => {
+                let headingText = "";
+                if (scheduleEntry.match.type === 'P13') headingText = "Spiel um Platz 13";
+                else if (scheduleEntry.match.type === 'P11') headingText = "Spiel um Platz 11";
+                else if (scheduleEntry.match.type === 'P9') headingText = "Spiel um Platz 9";
+
+                if (headingText && headingText !== currentHeading) {
+                    const headingElement = document.createElement('h2');
+                    headingElement.textContent = headingText;
+                    placementMatchesContainer.appendChild(headingElement);
+                    currentHeading = headingText;
+                }
+
+                const matchId = scheduleEntry.match.id;
+                const team1 = scheduleEntry.match.team1;
+                const team2 = scheduleEntry.match.team2;
+                const matchType = scheduleEntry.match.type;
+
+                let existingMatchData = finalRoundMatchResults['global'].find(m => m.id === matchId);
+
+                const matchInputDiv = createMatchInput('Placement', team1, team2, false, false, true, false, false, false, existingMatchData, scheduleEntry.time, scheduleEntry.table, matchId, matchType);
+                placementMatchesContainer.appendChild(matchInputDiv);
+            });
+            updatePlacementRoundMatchButtonStates();
+        }
+
+        // Update the state of input fields and buttons for placement round matches
+        function updatePlacementRoundMatchButtonStates() {
+            const placementContainers = document.getElementById('placement-matches-container').children;
+            const allPrelimGamesRecorded = preliminaryRoundSchedule.every(s => {
+                const group = s.match.groupKey;
+                const matchFound = groupMatchResults[group]?.find(m => m.id === s.match.id);
+                return matchFound && matchFound.score1 !== null && matchFound.score2 !== null;
+            });
+
+            for (let i = 0; i < placementContainers.length; i++) {
+                const matchDiv = placementContainers[i];
+                if (matchDiv.tagName === 'H2') continue;
+
+                const button = matchDiv.querySelector('button');
+                const inputs = matchDiv.querySelectorAll('input');
+                const team1 = matchDiv.querySelector('.team-name:first-of-type')?.textContent;
+                const team2 = matchDiv.querySelector('.team-name:last-of-type')?.textContent;
+                const matchId = matchDiv.getAttribute('data-match-id');
+
+                const disableInputsAndButton = (team1 === 'TBA' || team2 === 'TBA' || !allPrelimGamesRecorded);
+                
+                const existingMatch = finalRoundMatchResults['global'].find(m => m.id === matchId);
+                const isRecorded = (existingMatch && existingMatch.score1 !== null && existingMatch.score2 !== null);
+
+                if (existingMatch) {
+                    inputs[0].value = existingMatch.score1 !== null ? existingMatch.score1 : '';
+                    inputs[1].value = existingMatch.score2 !== null ? existingMatch.score2 : '';
+                }
+
+                // Inputs are always enabled unless teams are TBA
+                inputs.forEach(input => input.disabled = (team1 === 'TBA' || team2 === 'TBA'));
+
+                if (isRecorded) {
+                    button.textContent = 'Gespeichert!';
+                    button.classList.add('recorded');
+                    button.classList.remove('btn');
+                    button.disabled = true; // Button disabled if already saved and no changes
+                } else {
+                    button.classList.remove('recorded');
+                    button.classList.add('btn');
+                    
+                    if (disableInputsAndButton) {
+                        button.textContent = 'Ergebnis eintragen';
+                        button.disabled = true;
+                    } else {
+                        const currentScore1 = parseInt(inputs[0].value);
+                        const currentScore2 = parseInt(inputs[1].value);
+                        
+                        // Button is enabled if scores are valid and not equal
+                        if (isNaN(currentScore1) || isNaN(currentScore2) || currentScore1 === currentScore2) {
+                            button.textContent = 'Ergebnis eintragen';
+                            button.disabled = true;
+                        } else {
+                            // Compare with initial scores to decide if it's an update
+                            const initialStoredScore1 = existingMatch ? existingMatch.score1 : null;
+                            const initialStoredScore2 = existingMatch ? existingMatch.score2 : null;
+                            if (currentScore1 !== initialStoredScore1 || currentScore2 !== initialStoredScore2) {
+                                button.textContent = 'Ergebnis aktualisieren';
+                                button.disabled = false;
+                            } else {
+                                button.textContent = 'Gespeichert!';
+                                button.classList.add('recorded');
+                                button.disabled = true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Updates the progress of the placement round and the final standings table
+        function updatePlacementRoundAdvancements() {
+            const p13Result = finalRoundMatchResults['global'].find(m => m.id === 'P13');
+            if (p13Result && p13Result.score1 !== null && p13Result.score2 !== null) {
+                finalRankings[13] = p13Result.score1 > p13Result.score2 ? p13Result.team1 : p13Result.team2;
+                finalRankings[14] = p13Result.score1 < p13Result.score2 ? p13Result.team1 : p13Result.team2;
+            }
+
+            const p11Result = finalRoundMatchResults['global'].find(m => m.id === 'P11');
+            if (p11Result && p11Result.score1 !== null && p11Result.score2 !== null) {
+                finalRankings[11] = p11Result.score1 > p11Result.score2 ? p11Result.team1 : p11Result.team2;
+                finalRankings[12] = p11Result.score1 < p11Result.score2 ? p11Result.team1 : p11Result.team2;
+            }
+
+            const p9Result = finalRoundMatchResults['global'].find(m => m.id === 'P9');
+            if (p9Result && p9Result.score1 !== null && p9Result.score2 !== null) {
+                finalRankings[9] = p9Result.score1 > p9Result.score2 ? p9Result.team1 : p9Result.team2;
+                finalRankings[10] = p9Result.score1 < p9Result.score2 ? p9Result.team1 : p9Result.team2;
+            }
+            updateFinalRankingsTable();
+            renderPlacementRoundSchedule(); // Re-render to update TBA if any
+        }
+
+        // Function to generate the quarter-final matches
+        function generateQuarterFinalMatches() {
+            const allTeamsSorted = getCombinedRanking();
+            const top8Teams = allTeamsSorted.length >= 8 ? allTeamsSorted.slice(0, 8).map(team => team.name) : Array(8).fill('TBA');
+
+            const allPlacementGamesRecorded = placementRoundSchedule.every(s => finalRoundMatchResults['global'].some(m => m.id === s.match.id && m.score1 !== null && m.score2 !== null));
+            if (!allPlacementGamesRecorded) {
+                generateQuarterFinalMatchesTBA(); // If placement games not done, use TBAs
+                return;
+            }
+
+            let currentQuarterFinalsStartTime;
+            if (placementRoundSchedule.length > 0) {
+                const lastPlacementGame = placementRoundSchedule.slice(-1)[0];
+                currentQuarterFinalsStartTime = getNextAvailableTime(lastPlacementGame.time);
+            } else if (preliminaryRoundSchedule.length > 0) {
+                const lastPreliminaryGame = preliminaryRoundSchedule.slice(-1)[0];
+                currentQuarterFinalsStartTime = getNextAvailableTime(lastPreliminaryGame.time);
+            } else {
+                currentQuarterFinalsStartTime = startTime;
+            }
+            quarterFinalsStartTime = currentQuarterFinalsStartTime;
+
+            const newQuarterFinalMatches = [];
+            const vfMatches = [
+                { id: 'VF1', team1: top8Teams[0], team2: top8Teams[7], isFinalRound: true, isSmallSemiFinal: false, is7thPlace: false, is5thPlace: false, type: 'VF1' },
+                { id: 'VF2', team1: top8Teams[1], team2: top8Teams[6], isFinalRound: true, isSmallSemiFinal: false, is7thPlace: false, is5thPlace: false, type: 'VF2' },
+                { id: 'VF3', team1: top8Teams[2], team2: top8Teams[5], isFinalRound: true, isSmallSemiFinal: false, is7thPlace: false, is5thPlace: false, type: 'VF3' },
+                { id: 'VF4', team1: top8Teams[3], team2: top8Teams[4], isFinalRound: true, isSmallSemiFinal: false, is7thPlace: false, is5thPlace: false, type: 'VF4' }
+            ];
+
+            vfMatches.forEach(match => {
+                let existingScheduleEntry = quarterFinalsSchedule.find(s => s.match.id === match.id);
+                if (existingScheduleEntry) {
+                    existingScheduleEntry.match.team1 = match.team1;
+                    existingScheduleEntry.match.team2 = match.team2;
+                } else {
+                    newQuarterFinalMatches.push(match);
+                }
+            });
+
+            let allScheduledGamesForVF = [
+                ...preliminaryRoundSchedule,
+                ...placementRoundSchedule.map(s => ({ match: s.match, time: s.time, table: s.table })),
+                // Only include existing quarterFinalsSchedule matches if they are not in newQuarterFinalMatches (to avoid duplicates when updating teams)
+                ...quarterFinalsSchedule.filter(s => newQuarterFinalMatches.every(nm => nm.id !== s.match.id)).map(s => ({ match: s.match, time: s.time, table: s.table }))
+            ];
+            
+            const combinedScheduledGames = calculateGameSchedule(newQuarterFinalMatches, matchDuration, breakDuration, currentQuarterFinalsStartTime, numTables, allScheduledGamesForVF);
+            
+            quarterFinalsSchedule = combinedScheduledGames.filter(s => s.match.isFinalRound && s.match.type.startsWith('VF'));
+
+            // Sort quarterFinalsSchedule after new additions
+            quarterFinalsSchedule.sort((a,b) => {
+                const typeOrder = {'VF1': 1, 'VF2': 2, 'VF3': 3, 'VF4': 4};
+                if (typeOrder[a.match.type] !== typeOrder[b.match.type]) {
+                    return typeOrder[a.match.type] - typeOrder[b.match.type];
+                }
+                if (a.time !== b.time) return a.time.localeCompare(b.time);
+                return a.table - b.table;
+            });
+
+            // Set the start times for subsequent rounds
+            smallSemiFinalsStartTime = quarterFinalsSchedule.length > 0 ? getNextAvailableTime(quarterFinalsSchedule.slice(-1)[0].time) : quarterFinalsStartTime;
+            semiFinalsStartTime = quarterFinalsSchedule.length > 0 ? getNextAvailableTime(quarterFinalsSchedule.slice(-1)[0].time) : quarterFinalsStartTime;
+
+            renderQuarterFinalsSchedule();
+            updateFinalRoundMatchButtonStates();
+        }
+
+        // Generate TBA matches for quarter-finals if not ready
+        function generateQuarterFinalMatchesTBA() {
+            const quarterFinalsContainer = document.getElementById('quarter-finals-container');
+            quarterFinalsContainer.innerHTML = '';
+            
+            let currentQuarterFinalsStartTime;
+            if (placementRoundSchedule.length > 0) {
+                const lastPlacementGame = placementRoundSchedule.slice(-1)[0];
+                currentQuarterFinalsStartTime = getNextAvailableTime(lastPlacementGame.time);
+            } else if (preliminaryRoundSchedule.length > 0) {
+                const lastPreliminaryGame = preliminaryRoundSchedule.slice(-1)[0];
+                currentQuarterFinalsStartTime = getNextAvailableTime(lastPreliminaryGame.time);
+            } else {
+                currentQuarterFinalsStartTime = startTime;
+            }
+            quarterFinalsStartTime = currentQuarterFinalsStartTime;
+
+            const newTBA_vfMatches = [];
+
+            const vfMatchIds = ['VF1', 'VF2', 'VF3', 'VF4'];
+            vfMatchIds.forEach(id => {
+                if (!quarterFinalsSchedule.some(s => s.match.id === id)) {
+                    newTBA_vfMatches.push({ id: id, team1: 'TBA', team2: 'TBA', isFinalRound: true, type: id });
+                }
+            });
+            
+            if (newTBA_vfMatches.length > 0) {
+                const combinedScheduledGames = calculateGameSchedule(newTBA_vfMatches, matchDuration, breakDuration, currentQuarterFinalsStartTime, numTables, quarterFinalsSchedule);
+                quarterFinalsSchedule = combinedScheduledGames.filter(s => s.match.isFinalRound && s.match.type.startsWith('VF'));
+            }
+
+            quarterFinalsSchedule.sort((a,b) => {
+                const typeOrder = {'VF1': 1, 'VF2': 2, 'VF3': 3, 'VF4': 4};
+                if (typeOrder[a.match.type] !== typeOrder[b.match.type]) {
+                    return typeOrder[a.match.type] - typeOrder[b.match.type];
+                }
+                if (a.time !== b.time) return a.time.localeCompare(b.time);
+                return a.table - b.table;
+            });
+        }
+
+
+        // Renders the schedule for the quarter-final matches
+        function renderQuarterFinalsSchedule() {
+            const quarterFinalsContainer = document.getElementById('quarter-finals-container');
+            quarterFinalsContainer.innerHTML = '';
+
+            quarterFinalsSchedule.sort((a,b) => {
+                const typeOrder = {'VF1': 1, 'VF2': 2, 'VF3': 3, 'VF4': 4};
+                if (typeOrder[a.match.type] !== typeOrder[b.match.type]) {
+                    return typeOrder[a.match.type] - typeOrder[b.match.type];
+                }
+                if (a.time !== b.time) return a.time.localeCompare(b.time);
+                return a.table - b.table;
+            });
+
+            quarterFinalsSchedule.forEach(scheduleEntry => {
+                const matchId = scheduleEntry.match.id;
+                const team1 = scheduleEntry.match.team1;
+                const team2 = scheduleEntry.match.team2;
+                const matchType = scheduleEntry.match.type;
+
+                let existingMatchData = finalRoundMatchResults['global'].find(m => m.id === matchId);
+
+                const matchInputDiv = createMatchInput('FinalRound', team1, team2, false, true, false, false, false, false, existingMatchData, scheduleEntry.time, scheduleEntry.table, matchId, matchType);
+                quarterFinalsContainer.appendChild(matchInputDiv);
+            });
+            updateFinalRoundMatchButtonStates();
+        }
+
+        // NEW: Function to generate the small semi-final matches (for 5-8th place)
+        function generateSmallSemiFinalMatches() {
+            let loserVF1 = 'TBA', loserVF2 = 'TBA', loserVF3 = 'TBA', loserVF4 = 'TBA';
+
+            const vf1Result = finalRoundMatchResults['global'].find(m => m.id === 'VF1');
+            const vf2Result = finalRoundMatchResults['global'].find(m => m.id === 'VF2');
+            const vf3Result = finalRoundMatchResults['global'].find(m => m.id === 'VF3');
+            const vf4Result = finalRoundMatchResults['global'].find(m => m.id === 'VF4');
+
+            const allQuarterFinalsRecorded = quarterFinalsSchedule.every(s => finalRoundMatchResults['global'].some(m => m.id === s.match.id && m.score1 !== null && m.score2 !== null));
+            if (!allQuarterFinalsRecorded) {
+                generateSmallSemiFinalMatchesTBA(); // If QF not done, use TBAs
+                return;
+            }
+
+            if (vf1Result && vf1Result.score1 !== null && vf1Result.score2 !== null) {
+                loserVF1 = vf1Result.score1 < vf1Result.score2 ? vf1Result.team1 : vf1Result.team2;
+            }
+            if (vf2Result && vf2Result.score1 !== null && vf2Result.score2 !== null) {
+                loserVF2 = vf2Result.score1 < vf2Result.score2 ? vf2Result.team1 : vf2Result.team2;
+            }
+            if (vf3Result && vf3Result.score1 !== null && vf3Result.score2 !== null) {
+                loserVF3 = vf3Result.score1 < vf3Result.score2 ? vf3Result.team1 : vf3Result.team2;
+            }
+            if (vf4Result && vf4Result.score1 !== null && vf4Result.score2 !== null) {
+                loserVF4 = vf4Result.score1 < vf4Result.score2 ? vf4Result.team1 : vf4Result.team2;
+            }
+
+            const newSmallSemiFinalMatches = [];
+            const ssfMatches = [
+                { id: 'KHF1', team1: loserVF1, team2: loserVF4, isFinalRound: true, isSmallSemiFinal: true, is7thPlace: false, is5thPlace: false, type: 'KHF1' },
+                { id: 'KHF2', team1: loserVF2, team2: loserVF3, isFinalRound: true, isSmallSemiFinal: true, is7thPlace: false, is5thPlace: false, type: 'KHF2' }
+            ];
+
+            ssfMatches.forEach(match => {
+                let existingScheduleEntry = smallSemiFinalsSchedule.find(s => s.match.id === match.id);
+                if (existingScheduleEntry) {
+                    existingScheduleEntry.match.team1 = match.team1;
+                    existingScheduleEntry.match.team2 = match.team2;
+                } else {
+                    newSmallSemiFinalMatches.push(match);
+                }
+            });
+            
+            let allScheduledGamesForSSF = [
+                ...preliminaryRoundSchedule,
+                ...placementRoundSchedule.map(s => ({ match: s.match, time: s.time, table: s.table })),
+                ...quarterFinalsSchedule.map(s => ({ match: s.match, time: s.time, table: s.table })),
+                // Only include existing smallSemiFinalsSchedule matches if they are not in newSmallSemiFinalMatches
+                ...smallSemiFinalsSchedule.filter(s => newSmallSemiFinalMatches.every(nm => nm.id !== s.match.id)).map(s => ({ match: s.match, time: s.time, table: s.table }))
+            ];
+
+            const combinedScheduledGames = calculateGameSchedule(newSmallSemiFinalMatches, matchDuration, breakDuration, smallSemiFinalsStartTime, numTables, allScheduledGamesForSSF);
+
+            smallSemiFinalsSchedule = combinedScheduledGames.filter(s => s.match.isSmallSemiFinal);
+
+            smallSemiFinalsSchedule.sort((a,b) => {
+                const typeOrder = {'KHF1': 1, 'KHF2': 2};
+                if (typeOrder[a.match.type] !== typeOrder[b.match.type]) {
+                    return typeOrder[a.match.type] - typeOrder[b.match.type];
+                }
+                if (a.time !== b.time) return a.time.localeCompare(b.time);
+                return a.table - b.table;
+            });
+
+
+            renderSmallSemiFinalsSchedule();
+            updateFinalRoundMatchButtonStates();
+        }
+
+        // Generate TBA matches for small semi-finals if not ready
+        function generateSmallSemiFinalMatchesTBA() {
+            const smallSemiFinalsContainer = document.getElementById('small-semi-finals-container');
+            smallSemiFinalsContainer.innerHTML = '';
+            
+            let currentSmallSemiFinalStartTime = quarterFinalsSchedule.length > 0 ? getNextAvailableTime(quarterFinalsSchedule.slice(-1)[0].time) : quarterFinalsStartTime;
+
+            const newTBA_ssfMatches = [];
+            const ssfMatchIds = ['KHF1', 'KHF2'];
+            ssfMatchIds.forEach(id => {
+                if (!smallSemiFinalsSchedule.some(s => s.match.id === id)) {
+                    newTBA_ssfMatches.push({ id: id, team1: 'TBA', team2: 'TBA', isFinalRound: true, isSmallSemiFinal: true, type: id });
+                }
+            });
+
+            if (newTBA_ssfMatches.length > 0) {
+                const combinedScheduledGames = calculateGameSchedule(newTBA_ssfMatches, matchDuration, breakDuration, currentSmallSemiFinalStartTime, numTables, smallSemiFinalsSchedule);
+                smallSemiFinalsSchedule = combinedScheduledGames.filter(s => s.match.isSmallSemiFinal);
+            }
+
+            smallSemiFinalsSchedule.sort((a,b) => {
+                const typeOrder = {'KHF1': 1, 'KHF2': 2};
+                if (typeOrder[a.match.type] !== typeOrder[b.match.type]) {
+                    return typeOrder[a.match.type] - typeOrder[b.match.type];
+                }
+                if (a.time !== b.time) return a.time.localeCompare(b.time);
+                return a.table - b.table;
+            });
+        }
+
+
+        // NEW: Renders the schedule for the small semi-final matches
+        function renderSmallSemiFinalsSchedule() {
+            const smallSemiFinalsContainer = document.getElementById('small-semi-finals-container');
+            smallSemiFinalsContainer.innerHTML = '';
+
+            smallSemiFinalsSchedule.sort((a,b) => {
+                const typeOrder = {'KHF1': 1, 'KHF2': 2};
+                if (typeOrder[a.match.type] !== typeOrder[b.match.type]) {
+                    return typeOrder[a.match.type] - typeOrder[b.match.type];
+                }
+                if (a.time !== b.time) return a.time.localeCompare(b.time);
+                return a.table - b.table;
+            });
+
+            smallSemiFinalsSchedule.forEach(scheduleEntry => {
+                const matchId = scheduleEntry.match.id;
+                const team1 = scheduleEntry.match.team1;
+                const team2 = scheduleEntry.match.team2;
+                const matchType = scheduleEntry.match.type;
+
+                let existingMatchData = finalRoundMatchResults['global'].find(m => m.id === matchId);
+                
+                const matchInputDiv = createMatchInput('FinalRound', team1, team2, false, true, false, true, false, false, existingMatchData, scheduleEntry.time, scheduleEntry.table, matchId, matchType);
+                smallSemiFinalsContainer.appendChild(matchInputDiv);
+            });
+            updateFinalRoundMatchButtonStates();
+        }
+
+        // NEW: Logic for 7th and 5th place matches
+        function generateSeventhAndFifthPlaceMatches() {
+            let loserKHF1 = 'TBA', loserKHF2 = 'TBA';
+            let winnerKHF1 = 'TBA', winnerKHF2 = 'TBA';
+
+            const khf1Result = finalRoundMatchResults['global'].find(m => m.id === 'KHF1');
+            const khf2Result = finalRoundMatchResults['global'].find(m => m.id === 'KHF2');
+
+            const allSmallSemiFinalsRecorded = smallSemiFinalsSchedule.every(s => finalRoundMatchResults['global'].some(m => m.id === s.match.id && m.score1 !== null && m.score2 !== null));
+            if (!allSmallSemiFinalsRecorded) {
+                generateSeventhAndFifthPlaceMatchesTBA(); // If small semis not done, use TBAs
+                return;
+            }
+
+            if (khf1Result && khf1Result.score1 !== null && khf1Result.score2 !== null) {
+                loserKHF1 = khf1Result.score1 < khf1Result.score2 ? khf1Result.team1 : khf1Result.team2;
+                winnerKHF1 = khf1Result.score1 > khf1Result.score2 ? khf1Result.team1 : khf1Result.team2;
+            }
+            if (khf2Result && khf2Result.score1 !== null && khf2Result.score2 !== null) {
+                loserKHF2 = khf2Result.score1 < khf2Result.score2 ? khf2Result.team1 : khf2Result.team2;
+                winnerKHF2 = khf2Result.score1 > khf2Result.score2 ? khf2Result.team1 : khf2Result.team2;
+            }
+
+            const newMatchesToSchedule = [];
+            const p7Match = { id: 'P7', team1: loserKHF1, team2: loserKHF2, isFinalRound: true, isSmallSemiFinal: false, is7thPlace: true, is5thPlace: false, type: 'P7' };
+            const p5Match = { id: 'P5', team1: winnerKHF1, team2: winnerKHF2, isFinalRound: true, isSmallSemiFinal: false, is7thPlace: false, is5thPlace: true, type: 'P5' };
+
+            let existingP7Schedule = seventhPlaceMatchSchedule.find(s => s.match.id === 'P7');
+            if (existingP7Schedule) {
+                existingP7Schedule.match.team1 = p7Match.team1;
+                existingP7Schedule.match.team2 = p7Match.team2;
+            } else {
+                newMatchesToSchedule.push(p7Match);
+            }
+
+            let existingP5Schedule = fifthPlaceMatchSchedule.find(s => s.match.id === 'P5');
+            if (existingP5Schedule) {
+                existingP5Schedule.match.team1 = p5Match.team1;
+                existingP5Schedule.match.team2 = p5Match.team2;
+            } else {
+                newMatchesToSchedule.push(p5Match);
+            }
+
+            let currentPlacementStartTime;
+            if (smallSemiFinalsSchedule.length > 0) {
+                const lastSmallSemiFinalGame = smallSemiFinalsSchedule.slice(-1)[0];
+                currentPlacementStartTime = getNextAvailableTime(lastSmallSemiFinalGame.time);
+            } else if (quarterFinalsSchedule.length > 0) {
+                const lastQuarterFinalGame = quarterFinalsSchedule.slice(-1)[0];
+                currentPlacementStartTime = getNextAvailableTime(lastQuarterFinalsSchedule.time);
+            } else {
+                currentPlacementStartTime = quarterFinalsStartTime;
+            }
+            
+            let allScheduledGamesForP7P5 = [
+                ...preliminaryRoundSchedule,
+                ...placementRoundSchedule.map(s => ({ match: s.match, time: s.time, table: s.table })),
+                ...quarterFinalsSchedule.map(s => ({ match: s.match, time: s.time, table: s.table })),
+                ...smallSemiFinalsSchedule.map(s => ({ match: s.match, time: s.time, table: s.table })),
+                // Only include existing 7th and 5th place matches if they are not in newMatchesToSchedule
+                ...seventhPlaceMatchSchedule.filter(s => newMatchesToSchedule.every(nm => nm.id !== s.match.id)).map(s => ({ match: s.match, time: s.time, table: s.table })),
+                ...fifthPlaceMatchSchedule.filter(s => newMatchesToSchedule.every(nm => nm.id !== s.match.id)).map(s => ({ match: s.match, time: s.time, table: s.table }))
+            ];
+
+            const combinedScheduledGames = calculateGameSchedule(newMatchesToSchedule, matchDuration, breakDuration, currentPlacementStartTime, numTables, allScheduledGamesForP7P5);
+
+            seventhPlaceMatchSchedule = combinedScheduledGames.filter(s => s.match.type === 'P7');
+            fifthPlaceMatchSchedule = combinedScheduledGames.filter(s => s.match.type === 'P5');
+
+            seventhPlaceMatchSchedule.sort((a,b) => {if (a.time !== b.time) return a.time.localeCompare(b.time); return a.table - b.table;});
+            fifthPlaceMatchSchedule.sort((a,b) => {if (a.time !== b.time) return a.time.localeCompare(b.time); return a.table - b.table;});
+
+
+            renderSeventhAndFifthPlaceMatches();
+        }
+
+        // Generate TBA matches for 7th and 5th place if not ready
+        function generateSeventhAndFifthPlaceMatchesTBA() {
+            const seventhPlaceContainer = document.getElementById('seventh-place-container');
+            const fifthPlaceContainer = document.getElementById('fifth-place-container');
+            seventhPlaceContainer.innerHTML = '';
+            fifthPlaceContainer.innerHTML = '';
+
+            let current7th5thPlaceStartTime = smallSemiFinalsSchedule.length > 0 ? getNextAvailableTime(smallSemiFinalsSchedule.slice(-1)[0].time) : smallSemiFinalsStartTime;
+
+            const newTBA_P7P5Matches = [];
+            const p7MatchId = 'P7';
+            const p5MatchId = 'P5';
+
+            if (!seventhPlaceMatchSchedule.some(s => s.match.id === p7MatchId)) {
+                newTBA_P7P5Matches.push({ id: p7MatchId, team1: 'TBA', team2: 'TBA', isFinalRound: true, is7thPlace: true, type: p7MatchId });
+            }
+            if (!fifthPlaceMatchSchedule.some(s => s.match.id === p5MatchId)) {
+                newTBA_P7P5Matches.push({ id: p5MatchId, team1: 'TBA', team2: 'TBA', isFinalRound: true, is5thPlace: true, type: p5MatchId });
+            }
+            
+            if (newTBA_P7P5Matches.length > 0) {
+                const combinedSchedule = calculateGameSchedule(newTBA_P7P5Matches, matchDuration, breakDuration, current7th5thPlaceStartTime, numTables, [...seventhPlaceMatchSchedule, ...fifthPlaceMatchSchedule]);
+                seventhPlaceMatchSchedule = combinedSchedule.filter(s => s.match.type === p7MatchId);
+                fifthPlaceMatchSchedule = combinedSchedule.filter(s => s.match.type === p5MatchId);
+            }
+
+            seventhPlaceMatchSchedule.sort((a,b) => {if (a.time !== b.time) return a.time.localeCompare(b.time); return a.table - b.table;});
+            fifthPlaceMatchSchedule.sort((a,b) => {if (a.time !== b.time) return a.time.localeCompare(b.time); return a.table - b.table;});
+        }
+
+
+        // NEW: Renders the 7th and 5th place matches
+        function renderSeventhAndFifthPlaceMatches() {
+            const seventhPlaceContainer = document.getElementById('seventh-place-container');
+            const fifthPlaceContainer = document.getElementById('fifth-place-container');
+
+            seventhPlaceContainer.innerHTML = '';
+            seventhPlaceMatchSchedule.sort((a,b) => {if (a.time !== b.time) return a.time.localeCompare(b.time); return a.table - b.table;});
+            seventhPlaceMatchSchedule.forEach(scheduleEntry => {
+                const matchId = scheduleEntry.match.id;
+                const team1 = scheduleEntry.match.team1;
+                const team2 = scheduleEntry.match.team2;
+                const matchType = scheduleEntry.match.type;
+
+                let existingMatchData = finalRoundMatchResults['global'].find(m => m.id === matchId);
+                const matchInputDiv = createMatchInput('FinalRound', team1, team2, false, true, false, false, true, false, existingMatchData, scheduleEntry.time, scheduleEntry.table, matchId, matchType);
+                seventhPlaceContainer.appendChild(matchInputDiv);
+            });
+
+            fifthPlaceContainer.innerHTML = '';
+            fifthPlaceMatchSchedule.sort((a,b) => {if (a.time !== b.time) return a.time.localeCompare(b.time); return a.table - b.table;});
+            fifthPlaceMatchSchedule.forEach(scheduleEntry => {
+                const matchId = scheduleEntry.match.id;
+                const team1 = scheduleEntry.match.team1;
+                const team2 = scheduleEntry.match.team2;
+                const matchType = scheduleEntry.match.type;
+
+                let existingMatchData = finalRoundMatchResults['global'].find(m => m.id === matchId);
+                const matchInputDiv = createMatchInput('FinalRound', team1, team2, false, true, false, false, false, true, existingMatchData, scheduleEntry.time, scheduleEntry.table, matchId, matchType);
+                fifthPlaceContainer.appendChild(matchInputDiv);
+            });
+            updateFinalRoundMatchButtonStates();
+        }
+
+
+        // This function orchestrates the generation and rendering of all final and placement round matches based on dependencies.
+        function updateFinalRoundAdvancements() {
+            // This is the main orchestrator for all final/placement rounds
+            // It calls the specific generate and render functions for each stage in the correct order.
+
+            // 1. Placement Round (P13, P11, P9)
+            generatePlacementMatches();
+            renderPlacementRoundSchedule();
+
+            const allPlacementGamesRecorded = placementRoundSchedule.every(s => finalRoundMatchResults['global'].some(m => m.id === s.match.id && m.score1 !== null && m.score2 !== null));
+            
+            // 2. Quarter-Finals (VF1-VF4)
+            if (allPlacementGamesRecorded) {
+                generateQuarterFinalMatches();
+                renderQuarterFinalsSchedule();
+            } else {
+                generateQuarterFinalMatchesTBA(); // Render TBAs if not ready
+                renderQuarterFinalsSchedule();
+            }
+
+            const allQuarterFinalsRecorded = quarterFinalsSchedule.every(s => finalRoundMatchResults['global'].some(m => m.id === s.match.id && m.score1 !== null && m.score2 !== null));
+
+            // 3. Small Semi-Finals (KHF1, KHF2) and Semi-Finals (HF1, HF2)
+            if (allQuarterFinalsRecorded) {
+                generateSmallSemiFinalMatches();
+                renderSmallSemiFinalsSchedule();
+                generateSemiFinalMatches();
+                renderSemiFinalsSchedule();
+            } else {
+                generateSmallSemiFinalMatchesTBA();
+                renderSmallSemiFinalsSchedule();
+                generateSemiFinalMatchesTBA();
+                renderSemiFinalsSchedule();
+            }
+
+            const allSmallSemiFinalsRecorded = smallSemiFinalsSchedule.every(s => finalRoundMatchResults['global'].some(m => m.id === s.match.id && m.score1 !== null && m.score2 !== null));
+
+            // 4. 7th and 5th Place Matches (P7, P5)
+            if (allSmallSemiFinalsRecorded) {
+                generateSeventhAndFifthPlaceMatches();
+                renderSeventhAndFifthPlaceMatches();
+            } else {
+                generateSeventhAndFifthPlaceMatchesTBA();
+                renderSeventhAndFifthPlaceMatches();
+            }
+            
+            const allSemiFinalsRecorded = semiFinalsSchedule.every(s => finalRoundMatchResults['global'].some(m => m.id === s.match.id && m.score1 !== null && m.score2 !== null));
+
+            // 5. 3rd Place Match (P3) and Final (F)
+            if (allSemiFinalsRecorded) {
+                generateThirdPlaceAndFinalMatches();
+                renderThirdPlaceAndFinalMatches();
+            } else {
+                generateThirdPlaceAndFinalMatchesTBA();
+                renderThirdPlaceAndFinalMatches();
+            }
+
+            // Update Final Rankings based on all completed matches
+            const p3Result = finalRoundMatchResults['global'].find(m => m.id === 'P3');
+            if (p3Result && p3Result.score1 !== null && p3Result.score2 !== null) {
+                finalRankings[3] = p3Result.score1 > p3Result.score2 ? p3Result.team1 : p3Result.team2;
+                finalRankings[4] = p3Result.score1 < p3Result.score2 ? p3Result.team1 : p3Result.team2;
+            }
+
+            const finalResult = finalRoundMatchResults['global'].find(m => m.id === 'F');
+            if (finalResult && finalResult.score1 !== null && finalResult.score2 !== null) {
+                finalRankings[1] = finalResult.score1 > finalResult.score2 ? finalResult.team1 : finalResult.team2;
+                finalRankings[2] = finalResult.score1 < finalResult.score2 ? finalResult.team1 : finalResult.team2;
+            }
+
+            const p5Result = finalRoundMatchResults['global'].find(m => m.id === 'P5');
+            const p7Result = finalRoundMatchResults['global'].find(m => m.id === 'P7');
+
+            if (p5Result && p5Result.score1 !== null && p5Result.score2 !== null) {
+                finalRankings[5] = p5Result.score1 > p5Result.score2 ? p5Result.team1 : p5Result.team2;
+                finalRankings[6] = p5Result.score1 < p5Result.score2 ? p5Result.team1 : p5Result.team2;
+            }
+            if (p7Result && p7Result.score1 !== null && p7Result.score2 !== null) {
+                finalRankings[7] = p7Result.score1 > p7Result.score2 ? p7Result.team1 : p7Result.team2;
+                finalRankings[8] = p7Result.score1 < p7Result.score2 ? p7Result.team1 : p7Result.team2;
+            }
+
+            updateFinalRankingsTable();
+            updateFinalRoundMatchButtonStates();
+        }
+
+        // Helper function to calculate the next available time slot
+        function getNextAvailableTime(previousMatchTime) {
+            const [hours, minutes] = previousMatchTime.split(':').map(Number);
+            let nextTime = new Date(`2000-01-01T${hours}:${minutes}:00`);
+            nextTime.setMinutes(nextTime.getMinutes() + matchDuration + breakDuration);
+            return `${nextTime.getHours().toString().padStart(2, '0')}:${nextTime.getMinutes().toString().padStart(2, '0')}`;
+        }
+
+
+        function generateSemiFinalMatches() {
+            let sf1Team1 = 'TBA', sf1Team2 = 'TBA';
+            let sf2Team1 = 'TBA', sf2Team2 = 'TBA';
+
+            const vf1Result = finalRoundMatchResults['global'].find(m => m.id === 'VF1');
+            const vf2Result = finalRoundMatchResults['global'].find(m => m.id === 'VF2');
+            const vf3Result = finalRoundMatchResults['global'].find(m => m.id === 'VF3');
+            const vf4Result = finalRoundMatchResults['global'].find(m => m.id === 'VF4');
+
+            const allQuarterFinalsRecorded = quarterFinalsSchedule.every(s => finalRoundMatchResults['global'].some(m => m.id === s.match.id && m.score1 !== null && m.score2 !== null));
+            if (!allQuarterFinalsRecorded) {
+                generateSemiFinalMatchesTBA(); // If QF not done, use TBAs
+                return;
+            }
+
+            if (vf1Result && vf1Result.score1 !== null && vf1Result.score2 !== null) {
+                sf1Team1 = vf1Result.score1 > vf1Result.score2 ? vf1Result.team1 : vf1Result.team2;
+            }
+            if (vf4Result && vf4Result.score1 !== null && vf4Result.score2 !== null) {
+                sf1Team2 = vf4Result.score1 > vf4Result.score2 ? vf4Result.team1 : vf4Result.team2;
+            }
+            if (vf2Result && vf2Result.score1 !== null && vf2Result.score2 !== null) {
+                sf2Team1 = vf2Result.score1 > vf2Result.score2 ? vf2Result.team1 : vf2Result.team2;
+            }
+            if (vf3Result && vf3Result.score1 !== null && vf3Result.score2 !== null) {
+                sf2Team2 = vf3Result.score1 > vf3Result.score2 ? vf3Result.team1 : vf3Result.team2;
+            }
+
+            const newSemiFinalMatches = [];
+            const hfMatches = [
+                { id: 'HF1', team1: sf1Team1, team2: sf1Team2, isFinalRound: true, isSmallSemiFinal: false, is7thPlace: false, is5thPlace: false, type: 'HF1' },
+                { id: 'HF2', team1: sf2Team1, team2: sf2Team2, isFinalRound: true, isSmallSemiFinal: false, is7thPlace: false, is5thPlace: false, type: 'HF2' }
+            ];
+
+            hfMatches.forEach(match => {
+                let existingScheduleEntry = semiFinalsSchedule.find(s => s.match.id === match.id);
+                if (existingScheduleEntry) {
+                    existingScheduleEntry.match.team1 = match.team1;
+                    existingScheduleEntry.match.team2 = match.team2;
+                } else {
+                    newSemiFinalMatches.push(match);
+                }
+            });
+
+            let currentSemiFinalStartTime = quarterFinalsSchedule.length > 0 ? getNextAvailableTime(quarterFinalsSchedule.slice(-1)[0].time) : quarterFinalsStartTime;
+            
+            let allScheduledGamesForSemi = [
+                ...preliminaryRoundSchedule,
+                ...placementRoundSchedule.map(s => ({ match: s.match, time: s.time, table: s.table })),
+                ...quarterFinalsSchedule.map(s => ({ match: s.match, time: s.time, table: s.table })),
+                ...smallSemiFinalsSchedule.map(s => ({ match: s.match, time: s.time, table: s.table })),
+                ...seventhPlaceMatchSchedule.map(s => ({ match: s.match, time: s.time, table: s.table })),
+                ...fifthPlaceMatchSchedule.map(s => ({ match: s.match, time: s.time, table: s.table })),
+                // Only include existing semiFinalsSchedule matches if not in newSemiFinalMatches
+                ...semiFinalsSchedule.filter(s => newSemiFinalMatches.every(nm => nm.id !== s.match.id)).map(s => ({ match: s.match, time: s.time, table: s.table }))
+            ];
+
+            const combinedScheduledGames = calculateGameSchedule(newSemiFinalMatches, matchDuration, breakDuration, currentSemiFinalStartTime, numTables, allScheduledGamesForSemi);
+            
+            semiFinalsSchedule = combinedScheduledGames.filter(s => s.match.isFinalRound && s.match.type.startsWith('HF'));
+
+            semiFinalsSchedule.sort((a,b) => {
+                const typeOrder = {'HF1': 1, 'HF2': 2};
+                if (typeOrder[a.match.type] !== typeOrder[b.match.type]) {
+                    return typeOrder[a.match.type] - typeOrder[b.match.type];
+                }
+                if (a.time !== b.time) return a.time.localeCompare(b.time);
+                return a.table - b.table;
+            });
+        }
+
+        // Generate TBA matches for semi-finals if not ready
+        function generateSemiFinalMatchesTBA() {
+            const semiFinalsContainer = document.getElementById('semi-finals-container');
+            semiFinalsContainer.innerHTML = '';
+
+            let currentSemiFinalStartTime = quarterFinalsSchedule.length > 0 ? getNextAvailableTime(quarterFinalsSchedule.slice(-1)[0].time) : quarterFinalsStartTime;
+
+            const newTBA_hfMatches = [];
+            const hfMatchIds = ['HF1', 'HF2'];
+            hfMatchIds.forEach(id => {
+                if (!semiFinalsSchedule.some(s => s.match.id === id)) {
+                    newTBA_hfMatches.push({ id: id, team1: 'TBA', team2: 'TBA', isFinalRound: true, type: id });
+                }
+            });
+            
+            if (newTBA_hfMatches.length > 0) {
+                const combinedScheduledGames = calculateGameSchedule(newTBA_hfMatches, matchDuration, breakDuration, currentSemiFinalStartTime, numTables, semiFinalsSchedule);
+                semiFinalsSchedule = combinedScheduledGames.filter(s => s.match.isFinalRound && s.match.type.startsWith('HF'));
+            }
+
+            semiFinalsSchedule.sort((a,b) => {
+                const typeOrder = {'HF1': 1, 'HF2': 2};
+                if (typeOrder[a.match.type] !== typeOrder[b.match.type]) {
+                    return typeOrder[a.match.type] - typeOrder[b.match.type];
+                }
+                if (a.time !== b.time) return a.time.localeCompare(b.time);
+                return a.table - b.table;
+            });
+        }
+
+        function renderSemiFinalsSchedule() {
+            const semiFinalsContainer = document.getElementById('semi-finals-container');
+            semiFinalsContainer.innerHTML = '';
+
+            semiFinalsSchedule.sort((a,b) => {
+                const typeOrder = {'HF1': 1, 'HF2': 2};
+                if (typeOrder[a.match.type] !== typeOrder[b.match.type]) {
+                    return typeOrder[a.match.type] - typeOrder[b.match.type];
+                }
+                if (a.time !== b.time) return a.time.localeCompare(b.time);
+                return a.table - b.table;
+            });
+
+            semiFinalsSchedule.forEach(scheduleEntry => {
+                const matchId = scheduleEntry.match.id;
+                const team1 = scheduleEntry.match.team1;
+                const team2 = scheduleEntry.match.team2;
+                const matchType = scheduleEntry.match.type;
+
+                let existingMatchData = finalRoundMatchResults['global'].find(m => m.id === matchId);
+                
+                const matchInputDiv = createMatchInput('FinalRound', team1, team2, false, true, false, false, false, false, existingMatchData, scheduleEntry.time, scheduleEntry.table, matchId, matchType);
+                semiFinalsContainer.appendChild(matchInputDiv);
+            });
+            updateFinalRoundMatchButtonStates();
+        }
+
+        function generateThirdPlaceAndFinalMatches() {
+            const hf1Result = finalRoundMatchResults['global'].find(m => m.id === 'HF1');
+            const hf2Result = finalRoundMatchResults['global'].find(m => m.id === 'HF2');
+
+            const allSemiFinalsRecorded = semiFinalsSchedule.every(s => finalRoundMatchResults['global'].some(m => m.id === s.match.id && m.score1 !== null && m.score2 !== null));
+            if (!allSemiFinalsRecorded) {
+                generateThirdPlaceAndFinalMatchesTBA(); // If semis not done, use TBAs
+                return;
+            }
+
+            let loserHF1 = 'TBA', loserHF2 = 'TBA';
+            let winnerHF1 = 'TBA', winnerHF2 = 'TBA';
+
+            if (hf1Result && hf1Result.score1 !== null && hf1Result.score2 !== null) {
+                loserHF1 = hf1Result.score1 < hf1Result.score2 ? hf1Result.team1 : hf1Result.team2;
+                winnerHF1 = hf1Result.score1 > hf1Result.score2 ? hf1Result.team1 : hf1Result.team2;
+            }
+            if (hf2Result && hf2Result.score1 !== null && hf2Result.score2 !== null) {
+                loserHF2 = hf2Result.score1 < hf2Result.score2 ? hf2Result.team1 : hf2Result.team2;
+                winnerHF2 = hf2Result.score1 > hf2Result.score2 ? hf2Result.team1 : hf2Result.team2;
+            }
+
+            const newMatchesToSchedule = [];
+            const p3Match = { id: 'P3', team1: loserHF1, team2: loserHF2, isFinalRound: true, isSmallSemiFinal: false, is7thPlace: false, is5thPlace: false, type: 'P3' };
+            const finalMatch = { id: 'F', team1: winnerHF1, team2: winnerHF2, isFinalRound: true, isSmallSemiFinal: false, is7thPlace: false, is5thPlace: false, type: 'F' };
+
+            let existingP3Schedule = thirdPlaceMatchSchedule.find(s => s.match.id === 'P3');
+            if (existingP3Schedule) {
+                existingP3Schedule.match.team1 = p3Match.team1;
+                existingP3Schedule.match.team2 = p3Match.team2;
+            } else {
+                newMatchesToSchedule.push(p3Match);
+            }
+
+            let existingFinalSchedule = finalMatchSchedule.find(s => s.match.id === 'F');
+            if (existingFinalSchedule) {
+                existingFinalSchedule.match.team1 = finalMatch.team1;
+                existingFinalSchedule.match.team2 = finalMatch.team2;
+            } else {
+                newMatchesToSchedule.push(finalMatch);
+            }
+
+            let currentFinalStartTime;
+            if (semiFinalsSchedule.length > 0) {
+                const lastSemiFinalGame = semiFinalsSchedule.slice(-1)[0];
+                currentFinalStartTime = getNextAvailableTime(lastSemiFinalGame.time);
+            } else {
+                currentFinalStartTime = quarterFinalsStartTime; // Fallback if no semi-finals were generated
+            }
+            
+            let allScheduledGamesForFinals = [
+                ...preliminaryRoundSchedule,
+                ...placementRoundSchedule.map(s => ({ match: s.match, time: s.time, table: s.table })),
+                ...quarterFinalsSchedule.map(s => ({ match: s.match, time: s.time, table: s.table })),
+                ...smallSemiFinalsSchedule.map(s => ({ match: s.match, time: s.time, table: s.table })),
+                ...seventhPlaceMatchSchedule.map(s => ({ match: s.match, time: s.time, table: s.table })),
+                ...fifthPlaceMatchSchedule.map(s => ({ match: s.match, time: s.time, table: s.table })),
+                ...semiFinalsSchedule.map(s => ({ match: s.match, time: s.time, table: s.table })),
+                // Only include existing third and final matches if not in newMatchesToSchedule
+                ...thirdPlaceMatchSchedule.filter(s => newMatchesToSchedule.every(nm => nm.id !== s.match.id)).map(s => ({ match: s.match, time: s.time, table: s.table })),
+                ...finalMatchSchedule.filter(s => newMatchesToSchedule.every(nm => nm.id !== s.match.id)).map(s => ({ match: s.match, time: s.time, table: s.table }))
+            ];
+
+            const finalMatchesCombinedSchedule = calculateGameSchedule(newMatchesToSchedule, matchDuration, breakDuration, currentFinalStartTime, numTables, allScheduledGamesForFinals);
+            
+            thirdPlaceMatchSchedule = finalMatchesCombinedSchedule.filter(s => s.match.type === 'P3');
+            finalMatchSchedule = finalMatchesCombinedSchedule.filter(s => s.match.type === 'F');
+
+            thirdPlaceMatchSchedule.sort((a,b) => {if (a.time !== b.time) return a.time.localeCompare(b.time); return a.table - b.table;});
+            finalMatchSchedule.sort((a,b) => {if (a.time !== b.time) return a.time.localeCompare(b.time); return a.table - b.table;});
+        }
+
+        // Generate TBA matches for 3rd place and final if not ready
+        function generateThirdPlaceAndFinalMatchesTBA() {
+            const thirdPlaceContainer = document.getElementById('third-place-container');
+            const finalContainer = document.getElementById('final-container');
+            thirdPlaceContainer.innerHTML = '';
+            finalContainer.innerHTML = '';
+
+            let currentFinalStartTime = semiFinalsSchedule.length > 0 ? getNextAvailableTime(semiFinalsSchedule.slice(-1)[0].time) : quarterFinalsStartTime;
+
+            const newTBA_P3FMatches = [];
+            const p3MatchId = 'P3';
+            const finalMatchId = 'F';
+
+            if (!thirdPlaceMatchSchedule.some(s => s.match.id === p3MatchId)) {
+                newTBA_P3FMatches.push({ id: p3MatchId, team1: 'TBA', team2: 'TBA', isFinalRound: true, type: p3MatchId });
+            }
+            if (!finalMatchSchedule.some(s => s.match.id === finalMatchId)) {
+                newTBA_P3FMatches.push({ id: finalMatchId, team1: 'TBA', team2: 'TBA', isFinalRound: true, type: finalMatchId });
+            }
+
+            if (newTBA_P3FMatches.length > 0) {
+                const combinedSchedule = calculateGameSchedule(newTBA_P3FMatches, matchDuration, breakDuration, currentFinalStartTime, numTables, [...thirdPlaceMatchSchedule, ...finalMatchSchedule]);
+                thirdPlaceMatchSchedule = combinedSchedule.filter(s => s.match.type === p3MatchId);
+                finalMatchSchedule = combinedSchedule.filter(s => s.match.type === finalMatchId);
+            }
+
+            thirdPlaceMatchSchedule.sort((a,b) => {if (a.time !== b.time) return a.time.localeCompare(b.time); return a.table - b.table;});
+            finalMatchSchedule.sort((a,b) => {if (a.time !== b.time) return a.time.localeCompare(b.time); return a.table - b.table;});
+        }
+
+        function renderThirdPlaceAndFinalMatches() {
+            const thirdPlaceContainer = document.getElementById('third-place-container');
+            const finalContainer = document.getElementById('final-container');
+
+            thirdPlaceContainer.innerHTML = '';
+            thirdPlaceMatchSchedule.sort((a,b) => {if (a.time !== b.time) return a.time.localeCompare(b.time); return a.table - b.table;});
+
+            thirdPlaceMatchSchedule.forEach(scheduleEntry => {
+                const matchId = scheduleEntry.match.id;
+                const team1 = scheduleEntry.match.team1;
+                const team2 = scheduleEntry.match.team2;
+                const matchType = scheduleEntry.match.type; // Richtig
+
+                let existingMatchData = finalRoundMatchResults['global'].find(m => m.id === matchId);
+                const matchInputDiv = createMatchInput('FinalRound', team1, team2, false, true, false, false, false, false, existingMatchData, scheduleEntry.time, scheduleEntry.table, matchId, matchType);
+                thirdPlaceContainer.appendChild(matchInputDiv);
+            });
+
+
+            finalContainer.innerHTML = '';
+            finalMatchSchedule.sort((a,b) => {if (a.time !== b.time) return a.time.localeCompare(b.time); return a.table - b.table;});
+
+            finalMatchSchedule.forEach(scheduleEntry => {
+                const matchId = scheduleEntry.match.id;
+                const team1 = scheduleEntry.match.team1;
+                const team2 = scheduleEntry.match.team2;
+                const matchType = scheduleEntry.match.type;
+
+                let existingMatchData = finalRoundMatchResults['global'].find(m => m.id === matchId);
+                const matchInputDiv = createMatchInput('FinalRound', team1, team2, false, true, false, false, false, false, existingMatchData, scheduleEntry.time, scheduleEntry.table, matchId, matchType);
+                finalContainer.appendChild(matchInputDiv);
+            });
+            updateFinalRoundMatchButtonStates();
+        }
+
+
+        // Update the state of input fields and buttons for final round matches
+        function updateFinalRoundMatchButtonStates() {
+            const containers = [
+                document.getElementById('quarter-finals-container'),
+                document.getElementById('small-semi-finals-container'),
+                document.getElementById('seventh-place-container'),
+                document.getElementById('fifth-place-container'),
+                document.getElementById('semi-finals-container'),
+                document.getElementById('third-place-container'),
+                document.getElementById('final-container')
+            ];
+
+            const allPrelimGamesRecorded = preliminaryRoundSchedule.every(s => {
+                const group = s.match.groupKey;
+                const matchFound = groupMatchResults[group]?.find(m => m.id === s.match.id);
+                return matchFound && matchFound.score1 !== null && matchFound.score2 !== null;
+            });
+            const allPlacementGamesRecorded = placementRoundSchedule.every(s => finalRoundMatchResults['global'].some(m => m.id === s.match.id && m.score1 !== null && m.score2 !== null));
+            const allQuarterFinalsRecorded = quarterFinalsSchedule.every(s => finalRoundMatchResults['global'].some(m => m.id === s.match.id && m.score1 !== null && m.score2 !== null));
+            const allSmallSemiFinalsRecorded = smallSemiFinalsSchedule.every(s => finalRoundMatchResults['global'].some(m => m.id === s.match.id && m.score1 !== null && m.score2 !== null));
+            const allSemiFinalsRecorded = semiFinalsSchedule.every(s => finalRoundMatchResults['global'].some(m => m.id === s.match.id && m.score1 !== null && m.score2 !== null));
+            const allThirdPlaceRecorded = thirdPlaceMatchSchedule.every(s => finalRoundMatchResults['global'].some(m => m.id === s.match.id && m.score1 !== null && m.score2 !== null));
+
+
+            containers.forEach(container => {
+                Array.from(container.children).forEach(matchDiv => {
+                    if (matchDiv.tagName === 'H2') return;
+
+                    const button = matchDiv.querySelector('button');
+                    const inputs = matchDiv.querySelectorAll('input');
+                    const team1 = matchDiv.querySelector('.team-name:first-of-type')?.textContent;
+                    const team2 = matchDiv.querySelector('.team-name:last-of-type')?.textContent;
+                    const matchId = matchDiv.getAttribute('data-match-id');
+                    const matchType = matchDiv.getAttribute('data-match-type');
+
+                    // Determine if inputs/button should be disabled based on TBA teams or previous round's completion
+                    let disableInputsAndButton = (team1 === 'TBA' || team2 === 'TBA');
+
+                    if (matchType.startsWith('VF') && !allPlacementGamesRecorded) {
+                        disableInputsAndButton = true;
+                    } else if (matchType.startsWith('KHF') && !allQuarterFinalsRecorded) {
+                        disableInputsAndButton = true;
+                    } else if (matchType.startsWith('HF') && !allQuarterFinalsRecorded) {
+                        disableInputsAndButton = true;
+                    } else if ((matchType === 'P7' || matchType === 'P5') && !allSmallSemiFinalsRecorded) {
+                        disableInputsAndButton = true;
+                    } else if (matchType === 'P3' && !allSemiFinalsRecorded) {
+                        disableInputsAndButton = true;
+                    } else if (matchType === 'F' && !allThirdPlaceRecorded) {
+                        disableInputsAndButton = true;
+                    }
+                    
+                    const existingMatch = finalRoundMatchResults['global'].find(m => m.id === matchId);
+                    const isRecorded = (existingMatch && existingMatch.score1 !== null && existingMatch.score2 !== null);
+
+                    if (existingMatch) {
+                        inputs[0].value = existingMatch.score1 !== null ? existingMatch.score1 : '';
+                        inputs[1].value = existingMatch.score2 !== null ? existingMatch.score2 : '';
+                    }
+
+                    // Set input disabled state
+                    inputs.forEach(input => input.disabled = disableInputsAndButton);
+
+                    // Update button appearance and functionality
+                    if (disableInputsAndButton) {
+                        button.textContent = 'Ergebnis eintragen';
+                        button.classList.remove('recorded');
+                        button.classList.add('btn');
+                        button.disabled = true;
+                    } else {
+                        const currentScore1 = parseInt(inputs[0].value);
+                        const currentScore2 = parseInt(inputs[1].value);
+                        const initialStoredScore1 = existingMatch ? existingMatch.score1 : null;
+                        const initialStoredScore2 = existingMatch ? existingMatch.score2 : null;
+
+                        // Check if scores are valid and different from each other
+                        if (isNaN(currentScore1) || isNaN(currentScore2) || currentScore1 === currentScore2) {
+                            button.textContent = 'Ergebnis eintragen';
+                            button.classList.remove('recorded');
+                            button.classList.add('btn');
+                            button.disabled = true;
+                        } else if (currentScore1 !== initialStoredScore1 || currentScore2 !== initialStoredScore2) {
+                            button.textContent = 'Ergebnis aktualisieren';
+                            button.classList.remove('recorded');
+                            button.classList.add('btn');
+                            button.disabled = false;
+                        } else {
+                            // Scores are valid and match the stored ones
+                            button.textContent = 'Gespeichert!';
+                            button.classList.add('recorded');
+                            button.classList.remove('btn');
+                            button.disabled = true;
+                        }
+                    }
+                });
+            });
+        }
+
+
+        // Function to retrieve the combined ranking of all teams after the group stage
+        function getCombinedRanking() {
+            let allTeams = [];
+            for (const teamName in teamStats) {
+                allTeams.push({ name: teamName, ...teamStats[teamName] });
+            }
+
+            allTeams.sort((a, b) => {
+                if (b.punkte !== a.punkte) {
+                    return b.punkte - a.punkte;
+                }
+                if (b.tordifferenz !== a.tordifferenz) {
+                    return b.tordifferenz - a.tordifferenz;
+                }
+                return b.tore - a.tore;
+            });
+            return allTeams;
+        }
+
+        // Function for the overall ranking (after preliminary round)
+        function updateOverallStandings() {
+            const overallTableBody = document.getElementById('overall-standings-table-body');
+            overallTableBody.innerHTML = '';
+
+            const allTeamsSortedByGroupStats = getCombinedRanking();
+
+            allTeamsSortedByGroupStats.forEach((team, index) => {
+                const row = overallTableBody.insertRow();
+                const teamLogo = teamLogos[team.name] ? `<img src="${teamLogos[team.name]}" alt="${team.name} Logo" class="team-logo">` : '';
+                // Set the title attribute for full team name on hover
+                row.innerHTML = `
+                    <td title="${team.name}">${index + 1}.</td>
+                    <td title="${team.name}">${teamLogo} ${team.name}</td>
+                    <td>${team.punkte}</td>
+                    <td>${team.tordifferenz}</td>
+                    <td>${team.tore}</td>
+                    <td>${team.gegentore}</td>
+                `;
+            });
+        }
+
+        function renderOverallStandingsTable() {
+            const overallStandingsCard = document.querySelector('.overall-standings-card');
+            overallStandingsCard.style.display = 'block';
+            updateOverallStandings();
+        }
+
+        // Function for the final rankings table
+        function updateFinalRankingsTable() {
+            const finalRankingsTableBody = document.getElementById('final-rankings-table-body');
+            finalRankingsTableBody.innerHTML = '';
+
+            document.querySelector('.final-rankings-card').style.display = 'block';
+
+            const totalTeams = numGroups * teamsPerGroup;
+            const finalRankingsArray = [];
+            for (let i = 1; i <= totalTeams; i++) {
+                finalRankingsArray.push({ place: i, teamName: finalRankings[i] || 'TBA' });
+            }
+            
+            finalRankingsArray.sort((a, b) => a.place - b.place);
+
+            finalRankingsArray.forEach(entry => {
+                const row = finalRankingsTableBody.insertRow();
+                const teamLogo = teamLogos[entry.teamName] && entry.teamName !== 'TBA' ? `<img src="${teamLogos[entry.teamName]}" alt="${entry.teamName} Logo" class="team-logo">` : '';
+                row.innerHTML = `<td title="${entry.teamName}">${entry.place}.</td><td title="${entry.teamName}">${teamLogo} ${entry.teamName}</td>`;
+            });
+        }
+
+        function renderFinalRankingsTable() {
+            const finalRankingsCard = document.getElementById('final-rankings-wrapper').querySelector('.final-rankings-card');
+            if (!finalRankingsCard) {
+                const div = document.createElement('div');
+                div.className = 'final-rankings-card';
+                div.innerHTML = `
+                    <h2>Endrundentabelle</h2>
+                    <table id="final-rankings-table">
+                        <thead>
+                            <tr>
+                                <th>Platz</th>
+                                <th>Team</th>
+                            </tr>
+                        </thead>
+                        <tbody id="final-rankings-table-body">
+                        </tbody>
+                    </table>
+                `;
+                document.getElementById('final-rankings-wrapper').appendChild(div);
+            }
+            updateFinalRankingsTable();
+        }
+
+        // Initialize the screen when the DOM is fully loaded.
+        document.addEventListener('DOMContentLoaded', () => {
+            showScreen('start-screen');
+        });
+    </script>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Turnierplaner</h1>
+
+        <div id="start-screen" style="display: block;">
+            <div class="config-section">
+                <h2>Turnier konfigurieren</h2>
+                <div class="form-group">
+                    <label for="numGroups">Anzahl der Gruppen (max. 3):</label>
+                    <input type="number" id="numGroups" min="1" max="3" value="3" readonly>
+                </div>
+                <div class="form-group">
+                    <label for="teamsPerGroup">Teams pro Gruppe (max. 5):</label>
+                    <input type="number" id="teamsPerGroup" min="2" max="5" value="5" readonly>
+                </div>
+                <button class="btn" onclick="goToDetailConfiguration()">Weiter zur Detail-Konfiguration</button>
+            </div>
+        </div>
+
+        <div id="tournament-details-screen" style="display:none;">
+            <div class="tournament-details-section">
+                <h2>Turnier-Details festlegen</h2>
+                <div class="form-group">
+                    <label for="startTime">Turnier-Startzeit:</label>
+                    <input type="time" id="startTime" value="09:00">
+                </div>
+                <div class="form-group">
+                    <label for="matchDuration">Spiellänge pro Spiel (Minuten):</label>
+                    <input type="number" id="matchDuration" min="1" value="10">
+                </div>
+                <div class="form-group">
+                    <label for="breakDuration">Pausenzeit zwischen Spielen (Minuten):</label>
+                    <input type="number" id="breakDuration" min="0" value="5">
+                </div>
+                <div class="form-group">
+                    <label for="numTables">Anzahl der Spieltische:</label>
+                    <input type="number" id="numTables" min="1" value="1">
+                </div>
+                <button class="btn btn-back" onclick="showScreen('start-screen')">Zurück</button>
+                <button class="btn" onclick="configureTeams()">Weiter zur Team-Benennung</button>
+            </div>
+        </div>
+
+        <div id="team-naming-screen" style="display:none;">
+            <div class="team-naming-section">
+                <h2>Team-Namen eingeben und Logos hochladen</h2>
+                <div id="teamNameInputs">
+                </div>
+                <button class="btn btn-back" onclick="showScreen('tournament-details-screen')">Zurück</button>
+                <button class="btn" onclick="generateTournament()">Turnier generieren</button>
+            </div>
+        </div>
+
+        <div id="tournament-screen" style="display:none;">
+            <div id="tournament-details-summary">
+            </div>
+
+            <button class="btn" id="print-button" onclick="printTournamentPlan()" style="width: 100%; margin-bottom: 20px;">Turnierplan drucken</button>
+
+            <div style="width: 100%; display: flex; flex-wrap: wrap; gap: 20px;">
+                <div class="cross-game-option" style="flex: 1; display: none;">
+                    <input type="checkbox" id="enableCrossGames" checked style="display: none;"> <label for="enableCrossGames" style="display: none;">Cross-Gruppen-Spiele aktivieren</label>
+                </div>
+            </div>
+
+            <div id="game-schedule-column">
+                <div id="preliminary-round-section"><h2>Spielplan Vorrunde</h2>
+                    <div id="scheduled-matches-container">
+                    </div>
+                </div>
+
+                <div id="placement-round-section" class="placement-round-section" style="display:none;">
+                    <h2>Platzierungsrunde</h2>
+                    <div id="placement-matches-container">
+                    </div>
+                </div>
+
+                <div id="final-round-section" class="final-round-section" style="display:none;">
+                    <h2>Viertelfinale</h2>
+                    <div id="quarter-finals-container">
+                    </div>
+                    <h2>Kleines Halbfinale (Platz 5-8)</h2>
+                    <div id="small-semi-finals-container">
+                    </div>
+                    <h2>Halbfinale</h2>
+                    <div id="semi-finals-container">
+                    </div>
+                    <h2>Spiel um Platz 7</h2>
+                    <div id="seventh-place-container">
+                    </div>
+                    <h2>Spiel um Platz 5</h2>
+                    <div id="fifth-place-container">
+                    </div>
+                    <h2>Spiel um Platz 3</h2>
+                    <div id="third-place-container">
+                    </div>
+                    <h2>Finale</h2>
+                    <div id="final-container">
+                    </div>
+                </div>
+
+                <div id="cross-games-section" class="cross-games-section" style="display:none;"> <h2>Cross-Gruppen-Spiele</h2>
+                    <div id="cross-games-container">
+                    </div>
+                </div>
+            </div>
+
+            <div id="side-tables-wrapper">
+                <div id="group-tables-container">
+                    <h2>Tabellen Vorrunde</h2>
+                </div>
+
+                <div class="overall-standings-card" style="display: block;">
+                    <h2>Gesamtrangliste (nach Vorrunde)</h2>
+                    <table id="overall-standings-table">
+                        <thead>
+                            <tr>
+                                <th>Platz</th>
+                                <th>Team</th>
+                                <th>Punkte</th>
+                                <th>Tordiff.</th>
+                                <th>Tore</th>
+                            </tr>
+                        </thead>
+                        <tbody id="overall-standings-table-body">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="final-rankings-wrapper" style="display: block;">
+                <div class="final-rankings-card" style="display: none;"> <h2>Endrundentabelle</h2>
+                    <table id="final-rankings-table">
+                        <thead>
+                            <tr>
+                                <th>Platz</th>
+                                <th>Team</th>
+                            </tr>
+                        </thead>
+                        <tbody id="final-rankings-table-body">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <button class="btn btn-back" style="width: 100%; margin-top: 20px;" onclick="showScreen('team-naming-screen')">Zurück zur Team-Benennung</button>
+        </div>
+    </div>
+</body>
+</html>

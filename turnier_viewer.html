@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Turnierplaner - Live Ansicht</title>
+    <style>
+        /* Allgemeine Stile für den Body */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+
+        /* Überschrift des Planers */
+        h1 {
+            color: #0056b3;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        /* Hauptcontainer für den Inhalt */
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        /* Überschriften der Sektionen */
+        .config-section h2, .team-naming-section h2, .tournament-details-section h2, .cross-games-section h2, .final-round-section h2, .preliminary-round-section h2, .placement-round-section h2, .overall-standings-section h2, .final-rankings-section h2 {
+            color: #0056b3;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #cce5ff;
+            padding-bottom: 5px;
+        }
+
+        /* Turnierbildschirm Container */
+        #tournament-screen {
+            display: flex;
+            width: 100%;
+            gap: 20px;
+            flex-wrap: wrap;
+            flex-direction: row;
+            align-items: flex-start;
+        }
+
+        /* Linker Bereich für den Spielplan */
+        #game-schedule-column {
+            flex: 1;
+            min-width: 450px;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+        }
+
+        /* Wrapper für die Tabellen rechts neben dem Spielplan */
+        #side-tables-wrapper {
+            flex: 1;
+            min-width: 350px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            padding: 0;
+        }
+
+        /* Gruppentabellen und Gesamtrangliste innerhalb des side-tables-wrapper */
+        #group-tables-container, .overall-standings-card {
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+
+        /* Container für die Endrundentabelle (ganz unten) */
+        #final-rankings-wrapper {
+            width: 100%;
+            margin-top: 20px;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* Gruppendivs in der Tabellenspalte und Finaltabelle */
+        .group-table-card, .final-round-card, .placement-round-card, .overall-standings-card, .final-rankings-card {
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        .group-table-card h2, .final-round-card h2, .placement-round-card h2, .overall-standings-card h2, .final-rankings-card h2 {
+            color: #0056b3;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #0056b3;
+            padding-bottom: 10px;
+            margin-top: 0;
+            font-size: 1.2em;
+        }
+
+        /* Tabellenstile für Gruppentabellen und Abschlusstabelle */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            table-layout: fixed;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 6px;
+            text-align: left;
+            font-size: 0.9em;
+        }
+
+        .group-table-card table th:first-child,
+        .group-table-card table td:first-child {
+            width: 35%;
+        }
+
+        .group-table-card table th:nth-child(n+2),
+        .group-table-card table td:nth-child(n+2) {
+            width: 9%;
+        }
+
+        th {
+            background-color: #eaf2f8;
+            color: #333;
+            font-weight: bold;
+        }
+        td {
+            background-color: #fff;
+        }
+        tr:nth-child(even) td {
+            background-color: #f6f6f6;
+        }
+
+        /* Styling for long team names in tables */
+        td:first-child {
+            white-space: normal;
+            overflow: visible;
+            text-overflow: clip;
+            max-width: none;
+            word-break: break-word;
+        }
+
+        /* Eingabefelder für Spielergebnisse (im Viewer nur Anzeige) */
+        .match-input {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-bottom: 8px;
+            padding: 6px;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            background-color: #fff;
+            flex-wrap: wrap;
+            font-size: 0.85em;
+        }
+
+        /* Anzeige der Scores im Viewer */
+        .score-display-only {
+            margin-left: auto;
+            font-weight: bold;
+            font-size: 1.1em;
+            display: flex;
+            align-items: center;
+            padding: 6px;
+            min-width: 80px;
+            color: #0056b3; /* Farbe für die angezeigten Scores */
+        }
+        .score-display-only .match-score {
+            white-space: nowrap;
+        }
+        .score-display-only .placeholder-score {
+            color: #888; /* Farbe für den Platzhalter (z.B. '-') */
+            font-weight: normal;
+        }
+
+
+        /* Styling für Teamnamen in ALLEN Matches, um sie vertikal zu stapeln */
+        .match-input .team-display {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            margin-right: 10px;
+            min-width: 150px;
+        }
+
+        .match-input .team-name {
+            font-weight: bold;
+            color: #555;
+            white-space: normal;
+            word-break: break-word;
+            line-height: 1.2;
+        }
+
+        /* Team Logo im Spielplan und in der Tabelle */
+        .team-logo {
+            height: 18px;
+            width: 18px;
+            margin-right: 4px;
+            vertical-align: middle;
+            border: 1px solid #eee;
+            border-radius: 3px;
+            object-fit: contain;
+        }
+
+        /* Match time and table display */
+        .match-time-table {
+            font-weight: bold;
+            margin-right: 8px;
+            color: #007bff;
+            white-space: nowrap;
+            font-size: 0.85em;
+        }
+
+
+        /* Visuelle Hervorhebung für Cross-Spiele */
+        .cross-game-match {
+            background-color: #ffeeba;
+            border-color: #ffc107;
+        }
+
+        /* Visuelle Hervorhebung für Finalrunden-Spiele */
+        .final-round-match {
+            background-color: #d4edda;
+            border-color: #28a745;
+        }
+
+        /* Visuelle Hervorhebung für Platzierungsrunden-Spiele */
+        .placement-round-match {
+            background-color: #f8e2e2;
+            border-color: #dc3545;
+        }
+
+        /* Visuelle Hervorhebung für die neuen 'kleinen Halbfinals' */
+        .small-semi-final-match {
+            background-color: #fff3cd;
+            border-color: #ffc107;
+        }
+
+
+        /* Zusammenfassung der Turnierdetails */
+        #tournament-details-summary {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #eaf8e2;
+            border: 1px solid #d4edda;
+            border-radius: 5px;
+            font-size: 0.9em;
+            color: #155724;
+            width: 100%;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 1200px) {
+            #tournament-screen {
+                flex-direction: column;
+            }
+            #game-schedule-column, #side-tables-wrapper, #final-rankings-wrapper {
+                flex: none;
+                width: 100%;
+                min-width: unset;
+                margin-left: 0;
+            }
+        }
+
+        /* Print styles - angepasst für Viewer, da keine Eingaben sichtbar sind */
+        @media print {
+            body {
+                margin: 0;
+                padding: 0;
+                background-color: #fff;
+                color: #000;
+            }
+            .container {
+                max-width: none;
+                width: 100%;
+                margin: 0;
+                padding: 10px;
+                box-shadow: none;
+                display: block;
+            }
+            /* Alle Bedienelemente ausblenden */
+            .config-section, .team-naming-section, #start-screen, #tournament-details-screen, #team-naming-screen,
+            .btn-back, #print-button, .score-controls { /* .score-controls für die Admin-Seite */
+                display: none !important;
+            }
+            h1 {
+                page-break-after: avoid;
+            }
+            .overall-standings-card, .group-table-card, .final-round-section, .placement-round-section, .preliminary-round-section {
+                page-break-inside: avoid;
+                border: none;
+                box-shadow: none;
+                margin-bottom: 20px;
+                padding: 0;
+            }
+            table {
+                page-break-inside: auto;
+                width: 100%;
+                table-layout: auto;
+            }
+            th, td {
+                font-size: 0.8em;
+                padding: 4px 6px;
+            }
+            .match-input {
+                page-break-inside: avoid;
+                border: none;
+                padding: 2px 0;
+                margin-bottom: 2px;
+                background-color: transparent;
+                flex-wrap: nowrap;
+            }
+            /* Score-Eingabefelder und Buttons sind in der Viewer-Seite ohnehin nicht da,
+               aber diese Regeln wären für die Admin-Seite im Druckfall. */
+            .match-input button, .match-input input {
+                display: none;
+            }
+            .match-input span, .match-input img {
+                display: inline;
+            }
+            .team-logo {
+                height: 12px;
+                width: 12px;
+                margin-right: 2px;
+                border-radius: 0;
+                border: none;
+            }
+            /* Show recorded scores for printing */
+            .match-input::after {
+                content: attr(data-score-display);
+                margin-left: 5px;
+                font-weight: bold;
+            }
+            .match-input .team-display {
+                flex-direction: row;
+                margin-right: 5px;
+            }
+            .match-input .team-name {
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                max-width: 100px;
+            }
+        }
+    </style>
+    <script>
+        // Global variables (will be populated from localStorage)
+        let numGroups = 3;
+        let teamsPerGroup = 5;
+        let startTime = '09:00';
+        let matchDuration = 10;
+        let breakDuration = 5;
+        let numTables = 1;
+
+        let groups = {};
+        const teamStats = {};
+        const teamLogos = {};
+        const groupMatchResults = {};
+        const finalRoundMatchResults = {'global': []};
+        let preliminaryRoundSchedule = [];
+        let placementRoundSchedule = [];
+        let quarterFinalsSchedule = [];
+        let smallSemiFinalsSchedule = [];
+        let seventhPlaceMatchSchedule = [];
+        let fifthPlaceMatchSchedule = [];
+        let semiFinalsSchedule = [];
+        let thirdPlaceMatchSchedule = [];
+        let finalMatchSchedule = [];
+        let groupStageEndTime = null;
+        let placementRoundStartTime = null;
+        let quarterFinalsStartTime = null;
+        let smallSemiFinalsStartTime = null;
+        let semiFinalsStartTime = null;
+        const finalRankings = {};
+
+        // Function to switch visible screens (on viewer, always show tournament-screen)
+        function showScreen(screenId) {
+            document.getElementById('tournament-screen').style.display = 'flex';
+        }
+
+        // Function to handle printing (optional for viewer, but kept for consistency)
+        function printTournamentPlan() {
+            window.print();
+        }
+
+        // No need for initializeTournamentData or configureTeams etc. on viewer side,
+        // as data is loaded. Keep utility functions that do not modify data.
+
+        function updateTournamentDetailsSummary() {
+            const summaryDiv = document.getElementById('tournament-details-summary');
+            summaryDiv.innerHTML = `
+                <h3>Turnierdetails:</h3>
+                <p><strong>Startzeit:</strong> ${startTime}</p>
+                <p><strong>Spiellänge:</strong> ${matchDuration} Minuten</p>
+                <p><strong>Pausenzeit:</strong> ${breakDuration} Minuten</p>
+                <p><strong>Anzahl Spieltische:</strong> ${numTables}</p>
+                <p><strong>Gruppen:</strong> ${numGroups}</p>
+                <p><strong>Teams pro Gruppe:</strong> ${teamsPerGroup}</p>
+            `;
+        }
+
+        // --- Simplified createMatchInput for Viewer ---
+        // This function will NOT create input fields or buttons, only display scores.
+        function createMatchInput(groupKey, team1, team2, isCrossGame = false, isFinalRound = false, isPlacementRound = false, isSmallSemiFinal = false, is7thPlace = false, is5thPlace = false, initialScores = null, gameTime = null, tableNumber = null, matchId = null, matchType = null) {
+            const div = document.createElement('div');
+            div.className = 'match-input';
+            if (matchId) div.setAttribute('data-match-id', matchId);
+            if (matchType) div.setAttribute('data-match-type', matchType);
+
+            if (is7thPlace || is5thPlace) {
+                div.classList.add('placement-round-match');
+            } else if (isSmallSemiFinal) {
+                div.classList.add('small-semi-final-match');
+            } else if (isPlacementRound) {
+                div.classList.add('placement-round-match');
+            } else if (isFinalRound) {
+                div.classList.add('final-round-match');
+            }
+
+            const team1LogoSrc = teamLogos[team1] || '';
+            const team2LogoSrc = teamLogos[team2] || '';
+
+            const team1LogoHtml = team1LogoSrc ? `<img src="${team1LogoSrc}" alt="${team1} Logo" class="team-logo">` : '';
+            const team2LogoHtml = team2LogoSrc ? `<img src="${team2LogoSrc}" alt="${team2} Logo" class="team-logo">` : '';
+
+            const displayGameTime = gameTime && gameTime !== 'NaN:NaN' ? gameTime : 'N/A';
+            const timeAndTableDisplay = (displayGameTime !== 'N/A' && tableNumber) ?
+                `<span class="match-time-table">${displayGameTime} (Tisch ${tableNumber})</span>` : '';
+
+            // Logic to display scores or placeholders
+            let scoreDisplayHtml = '';
+            if (initialScores && initialScores.score1 !== null && initialScores.score2 !== null) {
+                scoreDisplayHtml = `<span class="match-score">${initialScores.score1} : ${initialScores.score2}</span>`;
+                div.setAttribute('data-score-display', `${initialScores.score1} : ${initialScores.score2}`); // For print
+            } else if (team1 === 'TBA' || team2 === 'TBA') {
+                 scoreDisplayHtml = `<span class="placeholder-score">TBA : TBA</span>`;
+                 div.setAttribute('data-score-display', 'TBA : TBA'); // For print
+            }
+            else {
+                scoreDisplayHtml = `<span class="placeholder-score"> - : - </span>`; // Default placeholder
+                div.setAttribute('data-score-display', ' - : - '); // For print
+            }
+
+            div.innerHTML = `
+                ${timeAndTableDisplay}
+                <div class="team-display">
+                    ${team1LogoHtml}<span class="team-name">${team1}</span>
+                    <span class="team-name">${team2LogoHtml}${team2}</span>
+                </div>
+                <div class="score-display-only">
+                    ${scoreDisplayHtml}
+                </div>
+            `;
+            // No event listeners or buttons for score recording in the viewer
+            return div;
+        }
+
+        // Functions below are mostly for rendering and data processing,
+        // so they can remain similar to the admin version, but without direct modification.
+
+        // Renders the schedule for the preliminary round
+        function renderPreliminaryRoundSchedule() {
+            const scheduledMatchesContainer = document.getElementById('scheduled-matches-container');
+            scheduledMatchesContainer.innerHTML = '';
+            preliminaryRoundSchedule.forEach(scheduleEntry => {
+                const team1 = scheduleEntry.match.team1;
+                const team2 = scheduleEntry.match.team2;
+                const groupKeyForMatch = scheduleEntry.match.groupKey;
+                const matchId = scheduleEntry.match.id;
+                let existingMatch = groupMatchResults[groupKeyForMatch]?.find(m => m.id === matchId);
+                const matchInput = createMatchInput(groupKeyForMatch, team1, team2, false, false, false, false, false, false, existingMatch, scheduleEntry.time, scheduleEntry.table, matchId, 'Preliminary');
+                scheduledMatchesContainer.appendChild(matchInput);
+            });
+        }
+
+        // Renders the schedule for the placement round
+        function renderPlacementRoundSchedule() {
+            const placementMatchesContainer = document.getElementById('placement-matches-container');
+            placementMatchesContainer.innerHTML = '';
+
+            const orderedPlacementMatches = [];
+            const matchOrder = ['P13', 'P11', 'P9'];
+
+            matchOrder.forEach(type => {
+                const matchesOfType = placementRoundSchedule.filter(entry => entry.match.type === type);
+                matchesOfType.sort((a, b) => {
+                    if (a.time !== b.time) return a.time.localeCompare(b.time);
+                    return a.table - b.table;
+                });
+                orderedPlacementMatches.push(...matchesOfType);
+            });
+
+            let currentHeading = "";
+
+            orderedPlacementMatches.forEach(scheduleEntry => {
+                let headingText = "";
+                if (scheduleEntry.match.type === 'P13') headingText = "Spiel um Platz 13";
+                else if (scheduleEntry.match.type === 'P11') headingText = "Spiel um Platz 11";
+                else if (scheduleEntry.match.type === 'P9') headingText = "Spiel um Platz 9";
+
+                if (headingText && headingText !== currentHeading) {
+                    const headingElement = document.createElement('h2');
+                    headingElement.textContent = headingText;
+                    placementMatchesContainer.appendChild(headingElement);
+                    currentHeading = headingText;
+                }
+
+                const matchId = scheduleEntry.match.id;
+                const team1 = scheduleEntry.match.team1;
+                const team2 = scheduleEntry.match.team2;
+                const matchType = scheduleEntry.match.type;
+
+                let existingMatchData = finalRoundMatchResults['global'].find(m => m.id === matchId);
+
+                const matchInputDiv = createMatchInput('Placement', team1, team2, false, false, true, false, false, false, existingMatchData, scheduleEntry.time, scheduleEntry.table, matchId, matchType);
+                placementMatchesContainer.appendChild(matchInputDiv);
+            });
+        }
+
+        // Renders the schedule for the quarter-final matches
+        function renderQuarterFinalsSchedule() {
+            const quarterFinalsContainer = document.getElementById('quarter-finals-container');
+            quarterFinalsContainer.innerHTML = '';
+
+            quarterFinalsSchedule.sort((a,b) => {
+                const typeOrder = {'VF1': 1, 'VF2': 2, 'VF3': 3, 'VF4': 4};
+                if (typeOrder[a.match.type] !== typeOrder[b.match.type]) {
+                    return typeOrder[a.match.type] - typeOrder[b.match.type];
+                }
+                if (a.time !== b.time) return a.time.localeCompare(b.time);
+                return a.table - b.table;
+            });
+
+            quarterFinalsSchedule.forEach(scheduleEntry => {
+                const matchId = scheduleEntry.match.id;
+                const team1 = scheduleEntry.match.team1;
+                const team2 = scheduleEntry.match.team2;
+                const matchType = scheduleEntry.match.type;
+
+                let existingMatchData = finalRoundMatchResults['global'].find(m => m.id === matchId);
+
+                const matchInputDiv = createMatchInput('FinalRound', team1, team2, false, true, false, false, false, false, existingMatchData, scheduleEntry.time, scheduleEntry.table, matchId, matchType);
+                quarterFinalsContainer.appendChild(matchInputDiv);
+            });
+        }
+
+        // Renders the schedule for the small semi-final matches
+        function renderSmallSemiFinalsSchedule() {
+            const smallSemiFinalsContainer = document.getElementById('small-semi-finals-container');
+            smallSemiFinalsContainer.innerHTML = '';
+
+            smallSemiFinalsSchedule.sort((a,b) => {
+                const typeOrder = {'KHF1': 1, 'KHF2': 2};
+                if (typeOrder[a.match.type] !== typeOrder[b.match.type]) {
+                    return typeOrder[a.match.type] - typeOrder[b.match.type];
+                }
+                if (a.time !== b.time) return a.time.localeCompare(b.time);
+                return a.table - b.table;
+            });
+
+            smallSemiFinalsSchedule.forEach(scheduleEntry => {
+                const matchId = scheduleEntry.match.id;
+                const team1 = scheduleEntry.match.team1;
+                const team2 = scheduleEntry.match.team2;
+                const matchType = scheduleEntry.match.type;
+
+                let existingMatchData = finalRoundMatchResults['global'].find(m => m.id === matchId);
+                
+                const matchInputDiv = createMatchInput('FinalRound', team1, team2, false, true, false, true, false, false, existingMatchData, scheduleEntry.time, scheduleEntry.table, matchId, matchType);
+                smallSemiFinalsContainer.appendChild(matchInputDiv);
+            });
+        }
+
+        // Renders the 7th and 5th place matches
+        function renderSeventhAndFifthPlaceMatches() {
+            const seventhPlaceContainer = document.getElementById('seventh-place-container');
+            const fifthPlaceContainer = document.getElementById('fifth-place-container');
+
+            seventhPlaceContainer.innerHTML = '';
+            seventhPlaceMatchSchedule.sort((a,b) => {if (a.time !== b.time) return a.time.localeCompare(b.time); return a.table - b.table;});
+            seventhPlaceMatchSchedule.forEach(scheduleEntry => {
+                const matchId = scheduleEntry.match.id;
+                const team1 = scheduleEntry.match.team1;
+                const team2 = scheduleEntry.match.team2;
+                const matchType = scheduleEntry.match.type;
+
+                let existingMatchData = finalRoundMatchResults['global'].find(m => m.id === matchId);
+                const matchInputDiv = createMatchInput('FinalRound', team1, team2, false, true, false, false, true, false, existingMatchData, scheduleEntry.time, scheduleEntry.table, matchId, matchType);
+                seventhPlaceContainer.appendChild(matchInputDiv);
+            });
+
+            fifthPlaceContainer.innerHTML = '';
+            fifthPlaceMatchSchedule.sort((a,b) => {if (a.time !== b.time) return a.time.localeCompare(b.time); return a.table - b.table;});
+            fifthPlaceMatchSchedule.forEach(scheduleEntry => {
+                const matchId = scheduleEntry.match.id;
+                const team1 = scheduleEntry.match.team1;
+                const team2 = scheduleEntry.match.team2;
+                const matchType = scheduleEntry.match.type;
+
+                let existingMatchData = finalRoundMatchResults['global'].find(m => m.id === matchId);
+                const matchInputDiv = createMatchInput('FinalRound', team1, team2, false, true, false, false, false, true, existingMatchData, scheduleEntry.time, scheduleEntry.table, matchId, matchType);
+                fifthPlaceContainer.appendChild(matchInputDiv);
+            });
+        }
+
+        function renderSemiFinalsSchedule() {
+            const semiFinalsContainer = document.getElementById('semi-finals-container');
+            semiFinalsContainer.innerHTML = '';
+
+            semiFinalsSchedule.sort((a,b) => {
+                const typeOrder = {'HF1': 1, 'HF2': 2};
+                if (typeOrder[a.match.type] !== typeOrder[b.match.type]) {
+                    return typeOrder[a.match.type] - typeOrder[b.match.type];
+                }
+                if (a.time !== b.time) return a.time.localeCompare(b.time);
+                return a.table - b.table;
+            });
+
+            semiFinalsSchedule.forEach(scheduleEntry => {
+                const matchId = scheduleEntry.match.id;
+                const team1 = scheduleEntry.match.team1;
+                const team2 = scheduleEntry.match.team2;
+                const matchType = scheduleEntry.match.type;
+
+                let existingMatchData = finalRoundMatchResults['global'].find(m => m.id === matchId);
+                
+                const matchInputDiv = createMatchInput('FinalRound', team1, team2, false, true, false, false, false, false, existingMatchData, scheduleEntry.time, scheduleEntry.table, matchId, matchType);
+                semiFinalsContainer.appendChild(matchInputDiv);
+            });
+        }
+
+        function renderThirdPlaceAndFinalMatches() {
+            const thirdPlaceContainer = document.getElementById('third-place-container');
+            const finalContainer = document.getElementById('final-container');
+
+            thirdPlaceContainer.innerHTML = '';
+            thirdPlaceMatchSchedule.sort((a,b) => {if (a.time !== b.time) return a.time.localeCompare(b.time); return a.table - b.table;});
+
+            thirdPlaceMatchSchedule.forEach(scheduleEntry => {
+                const matchId = scheduleEntry.match.id;
+                const team1 = scheduleEntry.match.team1;
+                const team2 = scheduleEntry.match.team2;
+                const matchType = scheduleEntry.match.type;
+
+                let existingMatchData = finalRoundMatchResults['global'].find(m => m.id === matchId);
+                const matchInputDiv = createMatchInput('FinalRound', team1, team2, false, true, false, false, false, false, existingMatchData, scheduleEntry.time, scheduleEntry.table, matchId, matchType);
+                thirdPlaceContainer.appendChild(matchInputDiv);
+            });
+
+
+            finalContainer.innerHTML = '';
+            finalMatchSchedule.sort((a,b) => {if (a.time !== b.time) return a.time.localeCompare(b.time); return a.table - b.table;});
+
+            finalMatchSchedule.forEach(scheduleEntry => {
+                const matchId = scheduleEntry.match.id;
+                const team1 = scheduleEntry.match.team1;
+                const team2 = scheduleEntry.match.team2;
+                const matchType = scheduleEntry.match.type;
+
+                let existingMatchData = finalRoundMatchResults['global'].find(m => m.id === matchId);
+                const matchInputDiv = createMatchInput('FinalRound', team1, team2, false, true, false, false, false, false, existingMatchData, scheduleEntry.time, scheduleEntry.table, matchId, matchType);
+                finalContainer.appendChild(matchInputDiv);
+            });
+        }
+
+
+        // Function to retrieve the combined ranking of all teams after the group stage
+        function getCombinedRanking() {
+            let allTeams = [];
+            for (const teamName in teamStats) {
+                allTeams.push({ name: teamName, ...teamStats[teamName] });
+            }
+
+            allTeams.sort((a, b) => {
+                if (b.punkte !== a.punkte) {
+                    return b.punkte - a.punkte;
+                }
+                if (b.tordifferenz !== a.tordifferenz) {
+                    return b.tordifferenz - a.tordifferenz;
+                }
+                return b.tore - a.tore;
+            });
+            return allTeams;
+        }
+
+        // Function for the overall ranking (after preliminary round)
+        function updateOverallStandings() {
+            const overallTableBody = document.getElementById('overall-standings-table-body');
+            overallTableBody.innerHTML = '';
+
+            const allTeamsSortedByGroupStats = getCombinedRanking();
+
+            allTeamsSortedByGroupStats.forEach((team, index) => {
+                const row = overallTableBody.insertRow();
+                const teamLogo = teamLogos[team.name] ? `<img src="${teamLogos[team.name]}" alt="${team.name} Logo" class="team-logo">` : '';
+                row.innerHTML = `
+                    <td title="${team.name}">${index + 1}.</td>
+                    <td title="${team.name}">${teamLogo} ${team.name}</td>
+                    <td>${team.punkte}</td>
+                    <td>${team.tordifferenz}</td>
+                    <td>${team.tore}</td>
+                    <td>${team.gegentore}</td>
+                `;
+            });
+        }
+
+        function renderOverallStandingsTable() {
+            const overallStandingsCard = document.querySelector('.overall-standings-card');
+            overallStandingsCard.style.display = 'block';
+            updateOverallStandings();
+        }
+
+        // Render Group Tables
+        function renderGroupTables() {
+            const groupTablesContainer = document.getElementById('group-tables-container');
+            groupTablesContainer.innerHTML = '';
+            const groupLetters = ['A', 'B', 'C'];
+            for (let i = 0; i < numGroups; i++) {
+                const groupKey = groupLetters[i];
+                if (groups[groupKey]) {
+                    const groupTableCard = document.createElement('div');
+                    groupTableCard.className = 'group-table-card';
+                    groupTableCard.innerHTML = `
+                        <h2>Gruppe ${groupKey} (${groups[groupKey].name})</h2>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Team</th>
+                                    <th>Spiele</th>
+                                    <th>Siege</th>
+                                    <th>Niederl.</th>
+                                    <th>Tore</th>
+                                    <th>Gegentore</th>
+                                    <th>Tordiff.</th>
+                                    <th>Punkte</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tableBody${groupKey}"></tbody>
+                        </table>
+                    `;
+                    groupTablesContainer.appendChild(groupTableCard);
+                }
+            }
+        }
+
+        function updateTable(groupKey) {
+            const tableBody = document.getElementById(`tableBody${groupKey}`);
+            if (!tableBody) return;
+
+            let sortedTeams = Object.keys(teamStats)
+                .filter(teamName => teamStats[teamName].group === groupKey)
+                .map(teamName => ({ name: teamName, ...teamStats[teamName] }));
+
+            sortedTeams.sort((a, b) => {
+                if (b.punkte !== a.punkte) {
+                    return b.punkte - a.punkte;
+                }
+                if (b.tordifferenz !== a.tordifferenz) {
+                    return b.tordifferenz - a.tordifferenz;
+                }
+                return b.tore - a.tore;
+            });
+
+            tableBody.innerHTML = '';
+
+            sortedTeams.forEach(team => {
+                const row = tableBody.insertRow();
+                const teamLogoInTable = teamLogos[team.name] ? `<img src="${teamLogos[team.name]}" alt="${team.name} Logo" class="team-logo">` : '';
+                row.innerHTML = `
+                    <td title="${team.name}">${teamLogoInTable} ${team.name}</td>
+                    <td>${team.spiele}</td>
+                    <td>${team.siege}</td>
+                    <td>${team.niederlagen}</td>
+                    <td>${team.tore}</td>
+                    <td>${team.gegentore}</td>
+                    <td>${team.tordifferenz}</td>
+                    <td>${team.punkte}</td>
+                `;
+            });
+        }
+        
+        // This function would usually calculate all stats, but in the viewer it just needs to be called
+        // to ensure tables are updated with potentially new data from localStorage.
+        function calculateAllStats() {
+             // In the viewer, we assume stats are pre-calculated by the admin page and loaded.
+             // No need to re-calculate them here unless a more complex sync is implemented.
+             // We just make sure this dummy function exists as it's called by updateAllTables.
+        }
+
+        function updateAllTables() {
+            // No full recalculation on the viewer, just update HTML based on loaded data
+            // (assuming data is correct from admin page)
+            const groupLetters = ['A', 'B', 'C'];
+            for (let i = 0; i < numGroups; i++) {
+                const groupKey = groupLetters[i];
+                if (groups[groupKey]) {
+                    updateTable(groupKey);
+                }
+            }
+            updateOverallStandings();
+        }
+
+        // Function for the final rankings table
+        function updateFinalRankingsTable() {
+            const finalRankingsTableBody = document.getElementById('final-rankings-table-body');
+            finalRankingsTableBody.innerHTML = '';
+
+            document.querySelector('.final-rankings-card').style.display = 'block';
+
+            const totalTeams = numGroups * teamsPerGroup;
+            const finalRankingsArray = [];
+            for (let i = 1; i <= totalTeams; i++) {
+                finalRankingsArray.push({ place: i, teamName: finalRankings[i] || 'TBA' });
+            }
+            
+            finalRankingsArray.sort((a, b) => a.place - b.place);
+
+            finalRankingsArray.forEach(entry => {
+                const row = finalRankingsTableBody.insertRow();
+                const teamLogo = teamLogos[entry.teamName] && entry.teamName !== 'TBA' ? `<img src="${teamLogos[entry.teamName]}" alt="${entry.teamName} Logo" class="team-logo">` : '';
+                row.innerHTML = `<td title="${entry.teamName}">${entry.place}.</td><td title="${entry.teamName}">${teamLogo} ${entry.teamName}</td>`;
+            });
+        }
+
+        function renderFinalRankingsTable() {
+            const finalRankingsCard = document.getElementById('final-rankings-wrapper').querySelector('.final-rankings-card');
+            if (!finalRankingsCard) {
+                const div = document.createElement('div');
+                div.className = 'final-rankings-card';
+                div.innerHTML = `
+                    <h2>Endrundentabelle</h2>
+                    <table id="final-rankings-table">
+                        <thead>
+                            <tr>
+                                <th>Platz</th>
+                                <th>Team</th>
+                            </tr>
+                        </thead>
+                        <tbody id="final-rankings-table-body">
+                        </tbody>
+                    </table>
+                `;
+                document.getElementById('final-rankings-wrapper').appendChild(div);
+            }
+            updateFinalRankingsTable();
+        }
+
+        // Main loading logic for the viewer
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedData = localStorage.getItem('tournamentData');
+            if (savedData) {
+                const data = JSON.parse(savedData);
+                // Wiederherstellen der globalen Variablen
+                numGroups = data.numGroups;
+                teamsPerGroup = data.teamsPerGroup;
+                startTime = data.startTime;
+                matchDuration = data.matchDuration;
+                breakDuration = data.breakDuration;
+                numTables = data.numTables;
+                
+                // Wiederherstellen der komplexen Objekte (Deep Copy für Objekt-Referenzen)
+                // Achtung: Für tief verschachtelte Objekte in teamStats/groups/matchResults
+                // wäre eine tiefere Klonung notwendig, aber für die aktuelle Struktur reicht Object.assign/direktes Zuweisen.
+                groups = data.groups; // groups might contain Date objects as strings if not handled correctly on save
+                teamStats = data.teamStats;
+                teamLogos = data.teamLogos;
+                groupMatchResults = data.groupMatchResults;
+                finalRoundMatchResults = data.finalRoundMatchResults;
+                
+                // Wiederherstellen der Zeitstempel als Date-Objekte
+                if (teamStats) {
+                    for (const teamName in teamStats) {
+                        if (teamStats[teamName].lastPlayedTime) {
+                            teamStats[teamName].lastPlayedTime = new Date(teamStats[teamName].lastPlayedTime);
+                        }
+                    }
+                }
+                if (groups) {
+                    for (const groupKey in groups) {
+                        if (groups[groupKey].lastPlayedTime) {
+                            groups[groupKey].lastPlayedTime = new Date(groups[groupKey].lastPlayedTime);
+                        }
+                    }
+                }
+
+                preliminaryRoundSchedule = data.preliminaryRoundSchedule || [];
+                placementRoundSchedule = data.placementRoundSchedule || [];
+                quarterFinalsSchedule = data.quarterFinalsSchedule || [];
+                smallSemiFinalsSchedule = data.smallSemiFinalsSchedule || [];
+                seventhPlaceMatchSchedule = data.seventhPlaceMatchSchedule || [];
+                fifthPlaceMatchSchedule = data.fifthPlaceMatchSchedule || [];
+                semiFinalsSchedule = data.semiFinalsSchedule || [];
+                thirdPlaceMatchSchedule = data.thirdPlaceMatchSchedule || [];
+                finalMatchSchedule = data.finalMatchSchedule || [];
+                finalRankings = data.finalRankings || {};
+                groupStageEndTime = data.groupStageEndTime;
+                placementRoundStartTime = data.placementRoundStartTime;
+                quarterFinalsStartTime = data.quarterFinalsStartTime;
+                smallSemiFinalsStartTime = data.smallSemiFinalsStartTime;
+                semiFinalsStartTime = data.semiFinalsStartTime;
+
+                // Rendern der Ansichten
+                updateTournamentDetailsSummary();
+                renderPreliminaryRoundSchedule();
+                renderGroupTables(); // This creates the HTML structure for the tables
+                updateAllTables(); // This populates the tables with data
+                renderOverallStandingsTable();
+                renderFinalRankingsTable();
+                
+                renderPlacementRoundSchedule();
+                renderQuarterFinalsSchedule();
+                renderSmallSemiFinalsSchedule();
+                renderSeventhAndFifthPlaceMatches();
+                renderSemiFinalsSchedule();
+                renderThirdPlaceAndFinalMatches();
+                
+                showScreen('tournament-screen'); // Zeigt den Turnier-Screen an
+            } else {
+                document.getElementById('tournament-screen').style.display = 'block'; // Make sure the container is visible
+                document.getElementById('tournament-screen').innerHTML = "<p style='text-align: center; font-size: 1.2em; margin-top: 50px;'>Keine Turnierdaten gefunden. Bitte konfigurieren und generieren Sie das Turnier in der Admin-Ansicht und speichern Sie es dort ab.</p>";
+            }
+        });
+    </script>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Turnierplaner - Live Ansicht</h1>
+
+        <div id="tournament-screen" style="display:none;">
+            <div id="tournament-details-summary">
+            </div>
+
+            <button class="btn" id="print-button" onclick="printTournamentPlan()" style="width: 100%; margin-bottom: 20px;">Turnierplan drucken</button>
+
+            <div style="width: 100%; display: flex; flex-wrap: wrap; gap: 20px;">
+                <div class="cross-game-option" style="flex: 1; display: none;">
+                    <input type="checkbox" id="enableCrossGames" checked style="display: none;"> <label for="enableCrossGames" style="display: none;">Cross-Gruppen-Spiele aktivieren</label>
+                </div>
+            </div>
+
+            <div id="game-schedule-column">
+                <div id="preliminary-round-section"><h2>Spielplan Vorrunde</h2>
+                    <div id="scheduled-matches-container">
+                    </div>
+                </div>
+
+                <div id="placement-round-section" class="placement-round-section" style="display:none;">
+                    <h2>Platzierungsrunde</h2>
+                    <div id="placement-matches-container">
+                    </div>
+                </div>
+
+                <div id="final-round-section" class="final-round-section" style="display:none;">
+                    <h2>Viertelfinale</h2>
+                    <div id="quarter-finals-container">
+                    </div>
+                    <h2>Kleines Halbfinale (Platz 5-8)</h2>
+                    <div id="small-semi-finals-container">
+                    </div>
+                    <h2>Halbfinale</h2>
+                    <div id="semi-finals-container">
+                    </div>
+                    <h2>Spiel um Platz 7</h2>
+                    <div id="seventh-place-container">
+                    </div>
+                    <h2>Spiel um Platz 5</h2>
+                    <div id="fifth-place-container">
+                    </div>
+                    <h2>Spiel um Platz 3</h2>
+                    <div id="third-place-container">
+                    </div>
+                    <h2>Finale</h2>
+                    <div id="final-container">
+                    </div>
+                </div>
+
+                <div id="cross-games-section" class="cross-games-section" style="display:none;"> <h2>Cross-Gruppen-Spiele</h2>
+                    <div id="cross-games-container">
+                    </div>
+                </div>
+            </div>
+
+            <div id="side-tables-wrapper">
+                <div id="group-tables-container">
+                    <h2>Tabellen Vorrunde</h2>
+                </div>
+
+                <div class="overall-standings-card" style="display: block;">
+                    <h2>Gesamtrangliste (nach Vorrunde)</h2>
+                    <table id="overall-standings-table">
+                        <thead>
+                            <tr>
+                                <th>Platz</th>
+                                <th>Team</th>
+                                <th>Punkte</th>
+                                <th>Tordiff.</th>
+                                <th>Tore</th>
+                            </tr>
+                        </thead>
+                        <tbody id="overall-standings-table-body">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="final-rankings-wrapper" style="display: block;">
+                <div class="final-rankings-card" style="display: none;"> <h2>Endrundentabelle</h2>
+                    <table id="final-rankings-table">
+                        <thead>
+                            <tr>
+                                <th>Platz</th>
+                                <th>Team</th>
+                            </tr>
+                        </thead>
+                        <tbody id="final-rankings-table-body">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            </div>
+    </div>
+</body>
+</html>
